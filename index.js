@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
 app.use(morgan('dev'));
 app.use(express.json());
 
-mongoose.connect("mongodb://root:root@ac-pjzthry-shard-00-00.dvhk9mj.mongodb.net:27017,ac-pjzthry-shard-00-01.dvhk9mj.mongodb.net:27017,ac-pjzthry-shard-00-02.dvhk9mj.mongodb.net:27017/?ssl=true&replicaSet=atlas-3hidp3-shard-0&authSource=admin&appName=Cluster0")
+mongoose.connect("mongodb://root:root@ac-pjzthry-shard-00-00.dvhk9mj.mongodb.net:27017,ac-pjzthry-shard-00-01.dvhk9mj.mongodb.net:27017,ac-pjzthry-shard-00-02.dvhk9mj.mongodb.net:27017/Hotel?ssl=true&replicaSet=atlas-3hidp3-shard-0&authSource=admin&appName=Cluster0")
 .then(()=>{
     console.log("Conectado correctamente a MongoDB");
 })
