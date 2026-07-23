@@ -46,6 +46,34 @@ const reservacionSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
+//metodos get, post y delete para la coleccion de reservaciones
+app.get('/reservaciones', async (req, res) => {
+    try {
+        const reservaciones = await Reservacion.find();
+        res.json(reservaciones);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+app.post('/reservaciones', async (req, res) => {
+    const reservacion = new Reservacion(req.body);
+    try {
+        const guardarReservacion = await reservacion.save();
+        res.status(201).json(guardarReservacion);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
+app.delete('/reservaciones/:id', async (req, res) => {
+    try {
+        const reservacion = await Reservacion.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Reservación eliminada correctamente' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 const Reservacion = mongoose.model('Reservacion', reservacionSchema, 'reservaciones');
 
 // Definimos el esquema para la colección de clientes
