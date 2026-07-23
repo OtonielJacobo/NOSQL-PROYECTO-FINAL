@@ -55,11 +55,42 @@ app.get('/reservaciones', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+
+app.get('/reservaciones/:id', async (req, res) => {
+    try {
+        const reservacion = await Reservacion.findById(req.params.id);
+        if (!reservacion) {
+            return res.status(404).json({ message: 'Reservación no encontrada' });
+        }
+        res.json(reservacion);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 app.post('/reservaciones', async (req, res) => {
     const reservacion = new Reservacion(req.body);
     try {
         const guardarReservacion = await reservacion.save();
         res.status(201).json(guardarReservacion);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
+app.put('/reservaciones/:id', async (req, res) => {
+    try {
+        const reservacion = await Reservacion.findById(req.params.id);
+        if (!reservacion) {
+            return res.status(404).json({ message: 'Reservación no encontrada' });
+        }
+        reservacion.hotelId = req.body.hotelId || reservacion.hotelId;
+        reservacion.cliente = req.body.cliente || reservacion.cliente;
+        reservacion.fechaEntrada = req.body.fechaEntrada || reservacion.fechaEntrada;
+        reservacion.fechaSalida = req.body.fechaSalida || reservacion.fechaSalida;
+        reservacion.numeroPersonas = req.body.numeroPersonas || reservacion.numeroPersonas;
+        const actualizarReservacion = await reservacion.save();
+        res.json(actualizarReservacion);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
@@ -91,6 +122,18 @@ app.get('/clientes', async (req, res) => {
     try {
         const clientes = await Cliente.find();
         res.json(clientes);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+app.get('/clientes/:id', async (req, res) => {
+    try {
+        const cliente = await Cliente.findById(req.params.id);
+        if (!cliente) {
+            return res.status(404).json({ message: 'Cliente no encontrado' });
+        }
+        res.json(cliente);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -160,6 +203,18 @@ app.get('/comentarios', async (req, res) => {
     }
 });
 
+app.get('/comentarios/:id', async (req, res) => {
+    try {
+        const comentario = await Comentario.findById(req.params.id);
+        if (!comentario) {
+            return res.status(404).json({ message: 'Comentario no encontrado' });
+        }
+        res.json(comentario);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 app.post('/comentarios', async (req, res) => {
     const comentario = new Comentario({
         hotelId: req.body.hotelId,
@@ -221,6 +276,18 @@ app.get('/habitaciones', async (req, res) => {
     try {
         const habitaciones = await Habitacion.find();
         res.json(habitaciones);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+app.get('/habitaciones/:id', async (req, res) => {
+    try {
+        const habitacion = await Habitacion.findById(req.params.id);
+        if (!habitacion) {
+            return res.status(404).json({ message: 'Habitación no encontrada' });
+        }
+        res.json(habitacion);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
