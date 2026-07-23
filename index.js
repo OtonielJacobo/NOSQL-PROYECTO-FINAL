@@ -33,7 +33,7 @@ const hotelSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
-const Hotel = mongoose.model('Hotel', hotelSchema);
+const Hotel = mongoose.model('Hotel', hotelSchema, 'hoteles');
 
 // Definimos el esquema para la colección de reservaciones
 const reservacionSchema = new mongoose.Schema(
@@ -46,7 +46,7 @@ const reservacionSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
-const Reservacion = mongoose.model('Reservacion', reservacionSchema);
+const Reservacion = mongoose.model('Reservacion', reservacionSchema, 'reservaciones');
 
 // Definimos el esquema para la colección de usuarios
 const usuarioSchema = new mongoose.Schema(
@@ -57,7 +57,7 @@ const usuarioSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
-const Usuario = mongoose.model('Usuario', usuarioSchema);
+const Usuario = mongoose.model('Usuario', usuarioSchema, 'usuarios');
 
 // Definimos el esquema para la colección de comentarios
 const comentarioSchema = new mongoose.Schema(
@@ -69,7 +69,7 @@ const comentarioSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
-const Comentario = mongoose.model('Comentario', comentarioSchema);
+const Comentario = mongoose.model('Comentario', comentarioSchema, 'comentarios');
 
 // Definimos el esquema para la colección de habitaciones
 const habitacionSchema = new mongoose.Schema(
@@ -81,7 +81,7 @@ const habitacionSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
-const Habitacion = mongoose.model('Habitacion', habitacionSchema);
+const Habitacion = mongoose.model('Habitacion', habitacionSchema, 'habitaciones');
 
 
 app.listen(port, () => {
