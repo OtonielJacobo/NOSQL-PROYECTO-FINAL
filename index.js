@@ -10,7 +10,7 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.static('frontend'));
 
-mongoose.connect("mongodb://root:root@ac-pjzthry-shard-00-00.dvhk9mj.mongodb.net:27017,ac-pjzthry-shard-00-01.dvhk9mj.mongodb.net:27017,ac-pjzthry-shard-00-02.dvhk9mj.mongodb.net:27017/Hotel?ssl=true&replicaSet=atlas-3hidp3-shard-0&authSource=admin&appName=Cluster0")
+mongoose.connect("mongodb+srv://root:root@cluster0.dvhk9mj.mongodb.net/Hotel")
 .then(()=>{
     console.log("Conectado correctamente a MongoDB");
 })
@@ -53,6 +53,8 @@ const reservacionSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
+const Reservacion = mongoose.model('Reservacion', reservacionSchema, 'reservaciones');
+
 //metodos get, post y delete para la coleccion de reservaciones
 app.get('/reservaciones', async (req, res) => {
     try {
@@ -63,17 +65,24 @@ app.get('/reservaciones', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
-
-app.get('/reservaciones/:id', async (req, res) => {
+app.put('/reservaciones/:id', async (req, res) => {
     try {
         const reservacion = await Reservacion.findById(req.params.id)
             .populate('hotelId habitacionId clienteId');
         if (!reservacion) {
             return res.status(404).json({ message: 'Reservación no encontrada' });
         }
-        res.json(reservacion);
+
+        reservacion.hotelId = req.body.hotelId || reservacion.hotelId;
+        reservacion.cliente = req.body.cliente || reservacion.cliente;
+        reservacion.fechaEntrada = req.body.fechaEntrada || reservacion.fechaEntrada;
+        reservacion.fechaSalida = req.body.fechaSalida || reservacion.fechaSalida;
+        reservacion.numeroPersonas = req.body.numeroPersonas || reservacion.numeroPersonas;
+
+        const reservacionActualizada = await reservacion.save();
+        res.json(reservacionActualizada);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(400).json({ message: error.message });
     }
 });
 
@@ -116,8 +125,6 @@ app.delete('/reservaciones/:id', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
-
-const Reservacion = mongoose.model('Reservacion', reservacionSchema, 'reservaciones');
 
 // Definimos el esquema para la colección de clientes
 const clienteSchema = new mongoose.Schema(
