@@ -17,12 +17,12 @@ mongoose.connect("mongodb+srv://root:root@cluster0.dvhk9mj.mongodb.net/Hotel")
     console.log("Error al conectar con MongoDB: ", error);
 });
 //Proyecto Final Enfocado a el manejo de una aplicacion de hoteles y reservaciones tipo trivago en MongoDB
-// Hoteles, Reservaciones, Clientes, Comentarios, Habitaciones
-// Definimos el esquema para la colección de hoteles
+// Hoteles, Reservaciones, Usuarios, Comentarios, Habitaciones
 app.get('/', (req, res) => {
   res.send('Bienvenido a la API de Hoteles y Reservaciones');
 });
 
+// Definimos el esquema para la colección de hoteles
 const hotelSchema = new mongoose.Schema(
     {
         nombre: {type: String, required: true},
@@ -87,6 +87,24 @@ app.post('/reservaciones', async (req, res) => {
     }
 });
 
+app.put('/reservaciones/:id', async (req, res) => {
+    try {
+        const reservacion = await Reservacion.findById(req.params.id);
+        if (!reservacion) {
+            return res.status(404).json({ message: 'Reservación no encontrada' });
+        }
+        reservacion.hotelId = req.body.hotelId || reservacion.hotelId;
+        reservacion.cliente = req.body.cliente || reservacion.cliente;
+        reservacion.fechaEntrada = req.body.fechaEntrada || reservacion.fechaEntrada;
+        reservacion.fechaSalida = req.body.fechaSalida || reservacion.fechaSalida;
+        reservacion.numeroPersonas = req.body.numeroPersonas || reservacion.numeroPersonas;
+        const actualizarReservacion = await reservacion.save();
+        res.json(actualizarReservacion);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
 app.delete('/reservaciones/:id', async (req, res) => {
     try {
         const reservacion = await Reservacion.findByIdAndDelete(req.params.id);
@@ -111,6 +129,18 @@ app.get('/clientes', async (req, res) => {
     try {
         const clientes = await Cliente.find();
         res.json(clientes);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+app.get('/clientes/:id', async (req, res) => {
+    try {
+        const cliente = await Cliente.findById(req.params.id);
+        if (!cliente) {
+            return res.status(404).json({ message: 'Cliente no encontrado' });
+        }
+        res.json(cliente);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -180,6 +210,18 @@ app.get('/comentarios', async (req, res) => {
     }
 });
 
+app.get('/comentarios/:id', async (req, res) => {
+    try {
+        const comentario = await Comentario.findById(req.params.id);
+        if (!comentario) {
+            return res.status(404).json({ message: 'Comentario no encontrado' });
+        }
+        res.json(comentario);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 app.post('/comentarios', async (req, res) => {
     const comentario = new Comentario({
         hotelId: req.body.hotelId,
@@ -237,10 +279,117 @@ const habitacionSchema = new mongoose.Schema(
 );
 const Habitacion = mongoose.model('Habitacion', habitacionSchema, 'habitaciones');
 
+app.post("/hoteles", async (req, res) => {
+    try {
+        const nuevoHotel = new Hotel(req.body); // ponytail: trust schema validation
+        const hotelGuardado = await nuevoHotel.save();
+
+        res.status(201).json({
+            mensaje: "Hotel registrado correctamente",
+            hotel: hotelGuardado,
+        });
+    } catch(error) {
+        res.status(400).json({
+            mensaje: "Error al guardar hotel",
+            error: error.message,
+        });
+    }
+});
+
+app.get("/hoteles", async (req, res) => {
+    try {
+        res.json(await Hotel.find())
+    } catch (error) {
+        res.status(500).json({
+            mensaje: "Error al obtener los hoteles",
+            error: error,
+        });
+    }
+});
+
+app.get("/hoteles/:id", async (req, res) => {
+    try {
+        const hotel = await Hotel.findById(req.params.id)
+
+        if (!hotel) {
+            return res.status(404).json({
+                mensaje: "Hotel no encontrado",
+            });
+        }
+
+        res.json(hotel);
+    } catch (error) {
+        res.status(500).json({
+            mensaje: "Error al obtener hotel",
+            error: error.message,
+        });
+    }
+})
+
+app.put("/hoteles/:id", async (req, res) => {
+    try {
+        const hotelActualizado = await Hotel.findByIdAndUpdate(
+            req.params.id, 
+            req.body,
+            {new: true, runValidators: true},
+        );
+
+        if (!hotelActualizado) {
+            return res.status(404).json({
+                mensaje: "Hotel no encontrado",
+            });
+        }
+
+        res.json({
+            mensaje: "Hotel actualizado correctamente",
+            hotel: hotelActualizado,
+        });
+    } catch (error) {
+        res.status(400).json({
+            mensaje: "Error al actualizar hotel",
+            error: error.message,
+        });
+    }
+})
+
+app.delete("/hoteles/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const hotelEliminado = await Hotel.findByIdAndDelete(id);
+
+    if (!hotelEliminado) {
+      return res.status(404).json({
+        mensaje: "Hotel no encontrado",
+      });
+    }
+
+    res.json({
+      mensaje: "Hotel eliminado correctamente",
+      hotel: hotelEliminado,
+    });
+  } catch (error) {
+    res.status(500).json({
+      mensaje: "Error al eliminar Hotel",
+      error: error.message,
+    });
+  }
+});
 app.get('/habitaciones', async (req, res) => {
     try {
         const habitaciones = await Habitacion.find();
         res.json(habitaciones);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+app.get('/habitaciones/:id', async (req, res) => {
+    try {
+        const habitacion = await Habitacion.findById(req.params.id);
+        if (!habitacion) {
+            return res.status(404).json({ message: 'Habitación no encontrada' });
+        }
+        res.json(habitacion);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
