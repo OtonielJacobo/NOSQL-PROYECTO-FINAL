@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 
 app.use(morgan('dev'));
 app.use(express.json());
+app.use(express.static('frontend'));
 
 mongoose.connect("mongodb://root:root@ac-pjzthry-shard-00-00.dvhk9mj.mongodb.net:27017,ac-pjzthry-shard-00-01.dvhk9mj.mongodb.net:27017,ac-pjzthry-shard-00-02.dvhk9mj.mongodb.net:27017/Hotel?ssl=true&replicaSet=atlas-3hidp3-shard-0&authSource=admin&appName=Cluster0")
 .then(()=>{
@@ -28,8 +29,6 @@ const hotelSchema = new mongoose.Schema(
         nombre: {type: String, required: true},
         ubicacion: {type: String, required: true},
         estrellas: {type: Number, required: true},
-        precio: {type: Number, required: true},
-        disponibilidad: {type: Boolean, required: true}
     },
     { timestamps: true }
 );
@@ -39,9 +38,17 @@ const Hotel = mongoose.model('Hotel', hotelSchema, 'hoteles');
 const reservacionSchema = new mongoose.Schema(
     {
         hotelId: {type: mongoose.Schema.Types.ObjectId, ref: 'Hotel', required: true},
-        cliente: {type: String, required: true},
+        habitacionId: {type: mongoose.Schema.Types.ObjectId, ref: 'Habitacion', required: true},
+        clienteId: {type: mongoose.Schema.Types.ObjectId, ref: 'Cliente', required: true},
         fechaEntrada: {type: Date, required: true},
-        fechaSalida: {type: Date, required: true},
+        fechaSalida: {
+            type: Date,
+            required: true,
+            validate: {
+                validator(value) { return value > this.fechaEntrada; },
+                message: 'La fecha de salida debe ser posterior a la fecha de entrada'
+            }
+        },
         numeroPersonas: {type: Number, required: true}
     },
     { timestamps: true }
@@ -49,7 +56,8 @@ const reservacionSchema = new mongoose.Schema(
 //metodos get, post y delete para la coleccion de reservaciones
 app.get('/reservaciones', async (req, res) => {
     try {
-        const reservaciones = await Reservacion.find();
+        const reservaciones = await Reservacion.find()
+            .populate('hotelId habitacionId clienteId');
         res.json(reservaciones);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -58,7 +66,8 @@ app.get('/reservaciones', async (req, res) => {
 
 app.get('/reservaciones/:id', async (req, res) => {
     try {
-        const reservacion = await Reservacion.findById(req.params.id);
+        const reservacion = await Reservacion.findById(req.params.id)
+            .populate('hotelId habitacionId clienteId');
         if (!reservacion) {
             return res.status(404).json({ message: 'Reservación no encontrada' });
         }
@@ -69,8 +78,9 @@ app.get('/reservaciones/:id', async (req, res) => {
 });
 
 app.post('/reservaciones', async (req, res) => {
-    const reservacion = new Reservacion(req.body);
     try {
+        await validarReferenciasReservacion(req.body);
+        const reservacion = new Reservacion(req.body);
         const guardarReservacion = await reservacion.save();
         res.status(201).json(guardarReservacion);
     } catch (error) {
@@ -84,11 +94,13 @@ app.put('/reservaciones/:id', async (req, res) => {
         if (!reservacion) {
             return res.status(404).json({ message: 'Reservación no encontrada' });
         }
-        reservacion.hotelId = req.body.hotelId || reservacion.hotelId;
-        reservacion.cliente = req.body.cliente || reservacion.cliente;
-        reservacion.fechaEntrada = req.body.fechaEntrada || reservacion.fechaEntrada;
-        reservacion.fechaSalida = req.body.fechaSalida || reservacion.fechaSalida;
-        reservacion.numeroPersonas = req.body.numeroPersonas || reservacion.numeroPersonas;
+        reservacion.hotelId = req.body.hotelId ?? reservacion.hotelId;
+        reservacion.habitacionId = req.body.habitacionId ?? reservacion.habitacionId;
+        reservacion.clienteId = req.body.clienteId ?? reservacion.clienteId;
+        reservacion.fechaEntrada = req.body.fechaEntrada ?? reservacion.fechaEntrada;
+        reservacion.fechaSalida = req.body.fechaSalida ?? reservacion.fechaSalida;
+        reservacion.numeroPersonas = req.body.numeroPersonas ?? reservacion.numeroPersonas;
+        await validarReferenciasReservacion(reservacion);
         const actualizarReservacion = await reservacion.save();
         res.json(actualizarReservacion);
     } catch (error) {
@@ -175,7 +187,7 @@ app.delete('/clientes/:id', async (req, res) => {
         if (!cliente) {
             return res.status(404).json({ message: 'Cliente no encontrado' });
         }
-        await cliente.remove();
+        await Cliente.findByIdAndDelete(req.params.id);
         res.json({ message: 'Cliente eliminado' });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -186,7 +198,7 @@ app.delete('/clientes/:id', async (req, res) => {
 const comentarioSchema = new mongoose.Schema(
     {
         hotelId: {type: mongoose.Schema.Types.ObjectId, ref: 'Hotel', required: true},
-        cliente: {type: String, required: true},
+        clienteId: {type: mongoose.Schema.Types.ObjectId, ref: 'Cliente', required: true},
         comentario: {type: String, required: true},
         calificacion: {type: Number, required: true}
     },
@@ -196,7 +208,7 @@ const Comentario = mongoose.model('Comentario', comentarioSchema, 'comentarios')
 
 app.get('/comentarios', async (req, res) => {
     try {
-        const comentarios = await Comentario.find();
+        const comentarios = await Comentario.find().populate('hotelId clienteId');
         res.json(comentarios);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -205,7 +217,7 @@ app.get('/comentarios', async (req, res) => {
 
 app.get('/comentarios/:id', async (req, res) => {
     try {
-        const comentario = await Comentario.findById(req.params.id);
+        const comentario = await Comentario.findById(req.params.id).populate('hotelId clienteId');
         if (!comentario) {
             return res.status(404).json({ message: 'Comentario no encontrado' });
         }
@@ -218,11 +230,12 @@ app.get('/comentarios/:id', async (req, res) => {
 app.post('/comentarios', async (req, res) => {
     const comentario = new Comentario({
         hotelId: req.body.hotelId,
-        cliente: req.body.cliente,
+        clienteId: req.body.clienteId,
         comentario: req.body.comentario,
         calificacion: req.body.calificacion
     });
     try {
+        await validarReferenciasComentario(comentario);
         const guardadoComentario = await comentario.save();
         res.status(201).json(guardadoComentario);
     } catch (error) {
@@ -236,10 +249,11 @@ app.put('/comentarios/:id', async (req, res) => {
         if (!comentario) {
             return res.status(404).json({ message: 'Comentario no encontrado' });
         }
-        comentario.hotelId = req.body.hotelId || comentario.hotelId;
-        comentario.cliente = req.body.cliente || comentario.cliente;
-        comentario.comentario = req.body.comentario || comentario.comentario;
-        comentario.calificacion = req.body.calificacion || comentario.calificacion;
+        comentario.hotelId = req.body.hotelId ?? comentario.hotelId;
+        comentario.clienteId = req.body.clienteId ?? comentario.clienteId;
+        comentario.comentario = req.body.comentario ?? comentario.comentario;
+        comentario.calificacion = req.body.calificacion ?? comentario.calificacion;
+        await validarReferenciasComentario(comentario);
         const actualizadoComentario = await comentario.save();
         res.json(actualizadoComentario);
     } catch (error) {
@@ -253,7 +267,7 @@ app.delete('/comentarios/:id', async (req, res) => {
         if (!comentario) {
             return res.status(404).json({ message: 'Comentario no encontrado' });
         }
-        await comentario.remove();
+        await Comentario.findByIdAndDelete(req.params.id);
         res.json({ message: 'Comentario eliminado' });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -271,6 +285,37 @@ const habitacionSchema = new mongoose.Schema(
     { timestamps: true }
 );
 const Habitacion = mongoose.model('Habitacion', habitacionSchema, 'habitaciones');
+
+// Verificamos que las referencias apunten a documentos existentes y relacionados.
+async function validarReferenciasReservacion({ hotelId, habitacionId, clienteId }) {
+    const [hotel, habitacion, cliente] = await Promise.all([
+        Hotel.findById(hotelId),
+        Habitacion.findById(habitacionId),
+        Cliente.findById(clienteId)
+    ]);
+
+    if (!hotel) throw new Error('El hotel indicado no existe');
+    if (!habitacion) throw new Error('La habitacion indicada no existe');
+    if (!cliente) throw new Error('El cliente indicado no existe');
+    if (String(habitacion.hotelId) !== String(hotel._id)) {
+        throw new Error('La habitacion no pertenece al hotel indicado');
+    }
+}
+
+async function validarReferenciasComentario({ hotelId, clienteId }) {
+    const [hotel, cliente] = await Promise.all([
+        Hotel.findById(hotelId),
+        Cliente.findById(clienteId)
+    ]);
+    if (!hotel) throw new Error('El hotel indicado no existe');
+    if (!cliente) throw new Error('El cliente indicado no existe');
+}
+
+async function validarHotelHabitacion(hotelId) {
+    if (!await Hotel.exists({ _id: hotelId })) {
+        throw new Error('El hotel indicado no existe');
+    }
+}
 
 app.post("/hoteles", async (req, res) => {
     try {
@@ -396,6 +441,7 @@ app.post('/habitaciones', async (req, res) => {
         disponibilidad: req.body.disponibilidad
     });
     try {
+        await validarHotelHabitacion(habitacion.hotelId);
         const guardadaHabitacion = await habitacion.save();
         res.status(201).json(guardadaHabitacion);
     } catch (error) {
@@ -409,10 +455,11 @@ app.put('/habitaciones/:id', async (req, res) => {
         if (!habitacion) {
             return res.status(404).json({ message: 'Habitación no encontrada' });
         }
-        habitacion.hotelId = req.body.hotelId || habitacion.hotelId;
-        habitacion.tipo = req.body.tipo || habitacion.tipo;
-        habitacion.precio = req.body.precio || habitacion.precio;
-        habitacion.disponibilidad = req.body.disponibilidad || habitacion.disponibilidad;
+        habitacion.hotelId = req.body.hotelId ?? habitacion.hotelId;
+        habitacion.tipo = req.body.tipo ?? habitacion.tipo;
+        habitacion.precio = req.body.precio ?? habitacion.precio;
+        habitacion.disponibilidad = req.body.disponibilidad ?? habitacion.disponibilidad;
+        await validarHotelHabitacion(habitacion.hotelId);
         const actualizadaHabitacion = await habitacion.save();
         res.json(actualizadaHabitacion);
     } catch (error) {
@@ -426,7 +473,7 @@ app.delete('/habitaciones/:id', async (req, res) => {
         if (!habitacion) {
             return res.status(404).json({ message: 'Habitación no encontrada' });
         }
-        await habitacion.remove();
+        await Habitacion.findByIdAndDelete(req.params.id);
         res.json({ message: 'Habitación eliminada' });
     } catch (error) {
         res.status(500).json({ message: error.message });
