@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión - Hotel</title>
+    <!-- CSS de Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <!-- Barra de Navegación -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">HotelAdmin</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link active" href="#" onclick="mostrarSeccion('clientes')">Clientes</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="mostrarSeccion('habitaciones')">Habitaciones</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="mostrarSeccion('reservaciones')">Reservaciones</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="mostrarSeccion('comentarios')">Comentarios</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="mostrarSeccion('hoteles')">Hoteles</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenedor Principal -->
+    <div class="container">
+        
+        <!-- SECCIÓN: CLIENTES -->
+        <section id="seccion-clientes" class="seccion-app">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>Gestión de Clientes</h2>
+                <button class="btn btn-success">+ Nuevo Cliente</button>
+            </div>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Correo</th>
+                                <th>Teléfono</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-clientes">
+                            <!-- Aquí se inyectarán los datos desde app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN: HABITACIONES (Oculta por defecto) -->
+        <section id="seccion-habitaciones" class="seccion-app" style="display: none;">
+            <h2>Catálogo de Habitaciones</h2>
+            <p>Aquí van las tarjetas de las habitaciones...</p>
+        </section>
+
+        <!-- Agrega las demás secciones (reservaciones, comentarios, hoteles) siguiendo la misma lógica -->
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="api.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
