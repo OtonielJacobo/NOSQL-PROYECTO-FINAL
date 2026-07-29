@@ -1,3 +1,6 @@
+const dns = require('dns');
+
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 const morgan = require('morgan');
 const express = require('express'); 
 const app = express();
@@ -65,11 +68,30 @@ app.get('/reservaciones', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+app.put('/reservaciones/:id', async (req, res) => {
+    try {
+        const reservacion = await Reservacion.findById(req.params.id)
+            .populate('hotelId habitacionId clienteId');
+        if (!reservacion) {
+            return res.status(404).json({ message: 'Reservación no encontrada' });
+        }
+
+        reservacion.hotelId = req.body.hotelId || reservacion.hotelId;
+        reservacion.cliente = req.body.cliente || reservacion.cliente;
+        reservacion.fechaEntrada = req.body.fechaEntrada || reservacion.fechaEntrada;
+        reservacion.fechaSalida = req.body.fechaSalida || reservacion.fechaSalida;
+        reservacion.numeroPersonas = req.body.numeroPersonas || reservacion.numeroPersonas;
+
+        const reservacionActualizada = await reservacion.save();
+        res.json(reservacionActualizada);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
 
 app.post('/reservaciones', async (req, res) => {
     try {
         await validarReferenciasReservacion(req.body);
-        await validarDisponibilidadFechas(req.body.habitacionId, req.body.fechaEntrada, req.body.fechaSalida);
         const reservacion = new Reservacion(req.body);
         const guardarReservacion = await reservacion.save();
         res.status(201).json(guardarReservacion);
@@ -91,7 +113,6 @@ app.put('/reservaciones/:id', async (req, res) => {
         reservacion.fechaSalida = req.body.fechaSalida ?? reservacion.fechaSalida;
         reservacion.numeroPersonas = req.body.numeroPersonas ?? reservacion.numeroPersonas;
         await validarReferenciasReservacion(reservacion);
-        await validarDisponibilidadFechas(reservacion.habitacionId, reservacion.fechaEntrada, reservacion.fechaSalida, reservacion._id);
         const actualizarReservacion = await reservacion.save();
         res.json(actualizarReservacion);
     } catch (error) {
@@ -111,8 +132,8 @@ app.delete('/reservaciones/:id', async (req, res) => {
 // Definimos el esquema para la colección de clientes
 const clienteSchema = new mongoose.Schema(
     {
-        nombre: {type: String, required: true},
-        email: {type: String, required: true, unique: true},
+        nombre: {type: String, required: true, trim: true},
+        email: {type: String, required: true, unique: true, trim: true, lowercase: true},
         password: {type: String, required: true}
     },
     { timestamps: true }
@@ -288,21 +309,6 @@ async function validarReferenciasReservacion({ hotelId, habitacionId, clienteId 
     if (!cliente) throw new Error('El cliente indicado no existe');
     if (String(habitacion.hotelId) !== String(hotel._id)) {
         throw new Error('La habitacion no pertenece al hotel indicado');
-    }
-}
-
-async function validarDisponibilidadFechas(habitacionId, fechaEntrada, fechaSalida, reservacionId = null) {
-    const query = {
-        habitacionId: habitacionId,
-        fechaEntrada: { $lt: new Date(fechaSalida) },
-        fechaSalida: { $gt: new Date(fechaEntrada) }
-    };
-    if (reservacionId) {
-        query._id = { $ne: reservacionId };
-    }
-    const solapamiento = await Reservacion.findOne(query);
-    if (solapamiento) {
-        throw new Error('Las fechas solicitadas se solapan con una reserva existente en esta habitación');
     }
 }
 
