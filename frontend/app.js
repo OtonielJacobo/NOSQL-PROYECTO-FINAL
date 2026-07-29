@@ -1,4 +1,4 @@
-// app.js - Este es el principal
+// app.js - Este es el principal pruebas
 
 let hoteles = [];
 let habitaciones = [];
