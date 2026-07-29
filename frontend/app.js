@@ -6,7 +6,7 @@ let hoteles = [];
 let habitaciones = [];
 let comentarios = [];
 let clientes = [];              // se usa solo para validar login (ver nota en iniciarSesion)
-let sesion = null;              // { _id, nombre, email } del cliente autenticado
+let sesion = null;              // { _id, nombre, email, rol } del cliente autenticado
 let reservaIntentada = null;    // guarda { hotelId, habitacionId } si el usuario intenta reservar sin sesión
 
 const SESSION_KEY = 'hoteliaCliente';
@@ -48,7 +48,7 @@ function restaurarSesion() {
 }
 
 function guardarSesion(cliente) {
-  sesion = { _id: cliente._id, nombre: cliente.nombre, email: cliente.email };
+  sesion = { _id: cliente._id, nombre: cliente.nombre, email: cliente.email, rol: cliente.rol || 'cliente' };
   localStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
   actualizarUISesion();
 }
@@ -62,6 +62,7 @@ function cerrarSesion() {
 
 function actualizarUISesion() {
   const caja = document.getElementById('cuenta-caja');
+  document.getElementById('enlace-admin').hidden = sesion?.rol !== 'admin';
   if (sesion) {
     caja.innerHTML = `
       <span class="cuenta-nombre">👤 ${escapeHtml(sesion.nombre)}</span>
@@ -156,7 +157,9 @@ function renderizarHoteles() {
 
     return `
       <article class="hotel-card">
-        <div class="hotel-img">🏙️</div>
+        <div class="hotel-img">${hotel.imagenUrl
+          ? `<img src="${escapeHtml(hotel.imagenUrl)}" alt="${escapeHtml(hotel.nombre)}">`
+          : '🏙️'}</div>
         <div class="hotel-info">
           <h3>${escapeHtml(hotel.nombre)}</h3>
           <p>📍 ${escapeHtml(hotel.ubicacion)}</p>
@@ -286,7 +289,7 @@ async function abrirMisReservaciones() {
       <div class="reserva-item">
         <div>
           <strong>${escapeHtml(r.hotelId?.nombre || 'Hotel')}</strong>
-          <p>${escapeHtml(r.habitacionId?.tipo || '')} · ${formatDate(r.fechaEntrada)} — ${formatDate(r.fechaSalida)} · ${r.numeroPersonas} personas</p>
+          <p>${escapeHtml(r.habitacionId?.tipo || '')} · ${formatDate(r.fechaEntrada)} — ${formatDate(r.fechaSalida)} · ${r.numeroPersonas} personas · Estado: ${escapeHtml(r.estado || 'activa')}</p>
         </div>
         <button class="danger-mini" data-cancelar="${r._id}" type="button">Cancelar</button>
       </div>
@@ -374,6 +377,10 @@ async function enviarLogin(event) {
 
     guardarSesion(cliente);
     cerrarModal('modal-auth');
+    if (sesion.rol === 'admin') {
+      window.location.href = 'admin.html';
+      return;
+    }
     continuarDespuesDeLogin();
   } catch (error) {
     notify(error.message, true);
@@ -388,6 +395,7 @@ async function enviarRegistro(event) {
       nombre: form.nombre.value.trim(),
       email: form.email.value.trim().toLowerCase(),
       password: form.password.value,
+      rol: 'cliente',
     });
     guardarSesion(cliente);
     cerrarModal('modal-auth');

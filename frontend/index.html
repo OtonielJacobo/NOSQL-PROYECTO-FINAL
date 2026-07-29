@@ -203,6 +203,12 @@
       color: white;
       text-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
+
+    .hotel-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
     
     .hotel-info { 
       padding: 24px; 
@@ -438,7 +444,7 @@
     <div class="nav-container">
       <h1>🏨 Hotelia</h1>
       <div class="nav-links">
-        <a href="admin.html" class="btn-admin">Acceso Admin</a>
+        <a href="admin.html" class="btn-admin" id="enlace-admin" hidden>Acceso Admin</a>
         <div id="cuenta-caja"></div>
       </div>
     </div>

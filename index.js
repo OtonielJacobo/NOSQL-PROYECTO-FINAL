@@ -32,6 +32,7 @@ const hotelSchema = new mongoose.Schema(
         nombre: {type: String, required: true},
         ubicacion: {type: String, required: true},
         estrellas: {type: Number, required: true},
+        imagenUrl: {type: String, trim: true},
     },
     { timestamps: true }
 );
@@ -52,7 +53,8 @@ const reservacionSchema = new mongoose.Schema(
                 message: 'La fecha de salida debe ser posterior a la fecha de entrada'
             }
         },
-        numeroPersonas: {type: Number, required: true}
+        numeroPersonas: {type: Number, required: true},
+        estado: {type: String, enum: ['activa', 'concluida'], default: 'activa', required: true}
     },
     { timestamps: true }
 );
@@ -61,6 +63,13 @@ const Reservacion = mongoose.model('Reservacion', reservacionSchema, 'reservacio
 //metodos get, post y delete para la coleccion de reservaciones
 app.get('/reservaciones', async (req, res) => {
     try {
+        // Una estancia concluye al pasar su fecha de salida.
+        const inicioDeHoy = new Date();
+        inicioDeHoy.setHours(0, 0, 0, 0);
+        await Reservacion.updateMany(
+            { fechaSalida: { $lt: inicioDeHoy }, estado: { $ne: 'concluida' } },
+            { $set: { estado: 'concluida' } }
+        );
         const reservaciones = await Reservacion.find()
             .populate('hotelId habitacionId clienteId');
         res.json(reservaciones);
@@ -115,7 +124,8 @@ const clienteSchema = new mongoose.Schema(
     {
         nombre: {type: String, required: true, trim: true},
         email: {type: String, required: true, unique: true, trim: true, lowercase: true},
-        password: {type: String, required: true}
+        password: {type: String, required: true},
+        rol: {type: String, enum: ['cliente', 'admin'], default: 'cliente', required: true}
     },
     { timestamps: true }
 );
@@ -146,7 +156,8 @@ app.post('/clientes', async (req, res) => {
     const cliente = new Cliente({
         nombre: req.body.nombre,
         email: req.body.email,
-        password: req.body.password
+        password: req.body.password,
+        rol: req.body.rol
     });
     try {
         const guardadoCliente = await cliente.save();
@@ -165,6 +176,7 @@ app.put('/clientes/:id', async (req, res) => {
         cliente.nombre = req.body.nombre || cliente.nombre;
         cliente.email = req.body.email || cliente.email;
         cliente.password = req.body.password || cliente.password;
+        cliente.rol = req.body.rol || cliente.rol;
         const actualizadoCliente = await cliente.save();
         res.json(actualizadoCliente);
     } catch (error) {

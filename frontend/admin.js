@@ -6,8 +6,9 @@ const entities = {
     fields: [
       ['nombre', 'Nombre del hotel', 'text'], ['ubicacion', 'Ubicación', 'text'],
       ['estrellas', 'Estrellas', 'number', { min: 1, max: 5 }],
+      ['imagenUrl', 'Enlace de imagen', 'url', { required: false }],
     ],
-    summary: (x) => [x.ubicacion, `${x.estrellas} estrellas`],
+    summary: (x) => [x.ubicacion, `${x.estrellas} estrellas`, x.imagenUrl ? 'Imagen configurada' : 'Sin imagen'],
   },
   habitaciones: {
     label: 'Habitaciones', singular: 'habitación',
@@ -20,8 +21,11 @@ const entities = {
   },
   clientes: {
     label: 'Clientes', singular: 'cliente',
-    fields: [['nombre', 'Nombre completo', 'text'], ['email', 'Correo electrónico', 'email'], ['password', 'Contraseña', 'password']],
-    summary: (x) => [x.email],
+    fields: [
+      ['nombre', 'Nombre completo', 'text'], ['email', 'Correo electrónico', 'email'], ['password', 'Contraseña', 'password'],
+      ['rol', 'Rol', 'select', { options: [['cliente', 'Cliente'], ['admin', 'Administrador']] }],
+    ],
+    summary: (x) => [x.email, `Rol: ${x.rol || 'cliente'}`],
   },
   reservaciones: {
     label: 'Reservaciones', singular: 'reservación',
@@ -32,7 +36,7 @@ const entities = {
       ['fechaEntrada', 'Fecha de entrada', 'date'], ['fechaSalida', 'Fecha de salida', 'date'],
       ['numeroPersonas', 'Número de personas', 'number', { min: 1 }],
     ],
-    summary: (x) => [hotelName(x.hotelId), roomName(x.habitacionId), clientName(x.clienteId), `${formatDate(x.fechaEntrada)} — ${formatDate(x.fechaSalida)}`, `${x.numeroPersonas} personas`],
+    summary: (x) => [hotelName(x.hotelId), roomName(x.habitacionId), clientName(x.clienteId), `${formatDate(x.fechaEntrada)} — ${formatDate(x.fechaSalida)}`, `${x.numeroPersonas} personas`, `Estado: ${x.estado || 'activa'}`],
   },
   comentarios: {
     label: 'Comentarios', singular: 'comentario',
@@ -91,6 +95,9 @@ function renderForm() {
 function fieldHtml(name, label, type, attrs, record) {
   const value = idOf(record?.[name]) ?? '';
   if (type === 'select') {
+    if (attrs.options) {
+      return `<label>${label}<select name="${name}" required>${attrs.options.map(([optionValue, optionLabel]) => `<option value="${optionValue}" ${optionValue === value ? 'selected' : ''}>${escapeHtml(optionLabel)}</option>`).join('')}</select></label>`;
+    }
     const options = state.data[attrs.source] || [];
     const display = attrs.source === 'hoteles' ? hotelName : attrs.source === 'habitaciones' ? roomName : clientName;
     return `<label>${label}<select name="${name}" required><option value="">Selecciona una opción</option>${options.map((item) => `<option value="${item._id}" ${item._id === value ? 'selected' : ''}>${escapeHtml(display(item))}</option>`).join('')}</select></label>`;
@@ -98,8 +105,8 @@ function fieldHtml(name, label, type, attrs, record) {
   if (type === 'textarea') return `<label>${label}<textarea name="${name}" required>${escapeHtml(value)}</textarea></label>`;
   if (type === 'checkbox') return `<label><span>${label}</span><select name="${name}" required><option value="true" ${value === true || value === 'true' ? 'selected' : ''}>Sí</option><option value="false" ${value === false || value === 'false' ? 'selected' : ''}>No</option></select></label>`;
   const shownValue = type === 'date' && value ? String(value).slice(0, 10) : value;
-  const extra = Object.entries(attrs).map(([key, val]) => `${key}="${val}"`).join(' ');
-  const required = type === 'password' && state.editingId ? '' : 'required';
+  const extra = Object.entries(attrs).filter(([key]) => key !== 'required').map(([key, val]) => `${key}="${val}"`).join(' ');
+  const required = attrs.required === false || (type === 'password' && state.editingId) ? '' : 'required';
   return `<label>${label}<input name="${name}" type="${type}" value="${escapeHtml(shownValue)}" ${extra} ${required}></label>`;
 }
 
