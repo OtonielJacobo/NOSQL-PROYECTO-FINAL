@@ -1,0 +1,142 @@
+const state = { active: 'hoteles', editingId: null, data: {} };
+
+const entities = {
+  hoteles: {
+    label: 'Hoteles', singular: 'hotel',
+    fields: [
+      ['nombre', 'Nombre del hotel', 'text'], ['ubicacion', 'Ubicación', 'text'],
+      ['estrellas', 'Estrellas', 'number', { min: 1, max: 5 }],
+    ],
+    summary: (x) => [x.ubicacion, `${x.estrellas} estrellas`],
+  },
+  habitaciones: {
+    label: 'Habitaciones', singular: 'habitación',
+    fields: [
+      ['hotelId', 'Hotel al que pertenece', 'select', { source: 'hoteles' }],
+      ['tipo', 'Tipo de habitación', 'text'], ['precio', 'Precio por noche', 'number', { min: 0, step: '0.01' }],
+      ['disponibilidad', 'Disponible para reservar', 'checkbox'],
+    ],
+    summary: (x) => [hotelName(x.hotelId), x.tipo, `$${x.precio ?? 0} por noche`, x.disponibilidad ? 'Disponible' : 'No disponible'],
+  },
+  clientes: {
+    label: 'Clientes', singular: 'cliente',
+    fields: [['nombre', 'Nombre completo', 'text'], ['email', 'Correo electrónico', 'email'], ['password', 'Contraseña', 'password']],
+    summary: (x) => [x.email],
+  },
+  reservaciones: {
+    label: 'Reservaciones', singular: 'reservación',
+    fields: [
+      ['hotelId', 'Hotel', 'select', { source: 'hoteles' }],
+      ['habitacionId', 'Habitación', 'select', { source: 'habitaciones' }],
+      ['clienteId', 'Cliente', 'select', { source: 'clientes' }],
+      ['fechaEntrada', 'Fecha de entrada', 'date'], ['fechaSalida', 'Fecha de salida', 'date'],
+      ['numeroPersonas', 'Número de personas', 'number', { min: 1 }],
+    ],
+    summary: (x) => [hotelName(x.hotelId), roomName(x.habitacionId), clientName(x.clienteId), `${formatDate(x.fechaEntrada)} — ${formatDate(x.fechaSalida)}`, `${x.numeroPersonas} personas`],
+  },
+  comentarios: {
+    label: 'Comentarios', singular: 'comentario',
+    fields: [
+      ['hotelId', 'Hotel', 'select', { source: 'hoteles' }], ['clienteId', 'Cliente', 'select', { source: 'clientes' }],
+      ['comentario', 'Comentario', 'textarea'], ['calificacion', 'Calificación (1-5)', 'number', { min: 1, max: 5 }],
+    ],
+    summary: (x) => [hotelName(x.hotelId), clientName(x.clienteId), `★ ${x.calificacion}/5`, x.comentario],
+  },
+};
+
+const $ = (selector) => document.querySelector(selector);
+const idOf = (value) => typeof value === 'object' && value ? value._id : value;
+const findById = (resource, value) => state.data[resource]?.find((item) => item._id === idOf(value));
+const hotelName = (value) => typeof value === 'object' ? value.nombre : (findById('hoteles', value)?.nombre || 'Hotel no disponible');
+const roomName = (value) => typeof value === 'object' ? `${value.tipo} · $${value.precio}` : (() => { const room = findById('habitaciones', value); return room ? `${room.tipo} · $${room.precio}` : 'Habitación no disponible'; })();
+const clientName = (value) => typeof value === 'object' ? value.nombre : (findById('clientes', value)?.nombre || 'Cliente no disponible');
+const formatDate = (value) => value ? new Date(value).toLocaleDateString('es-MX', { timeZone: 'UTC' }) : '';
+const escapeHtml = (text) => String(text ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]);
+
+async function loadData() {
+  try {
+    const names = Object.keys(entities);
+    const results = await Promise.all(names.map((name) => api.get(name)));
+    state.data = Object.fromEntries(names.map((name, index) => [name, results[index]]));
+    render();
+  } catch (error) { notify(`No se pudo conectar con la API: ${error.message}`, true); }
+}
+
+function render() { renderStats(); renderTabs(); renderForm(); renderList(); }
+
+function renderStats() {
+  $('#stats').innerHTML = Object.entries(entities).map(([key, entity]) =>
+    `<article class="stat"><strong>${state.data[key]?.length ?? 0}</strong><span>${entity.label}</span></article>`).join('');
+}
+
+function renderTabs() {
+  $('#tabs').innerHTML = Object.entries(entities).map(([key, entity]) =>
+    `<button class="tab ${key === state.active ? 'active' : ''}" data-tab="${key}">${entity.label}</button>`).join('');
+  document.querySelectorAll('[data-tab]').forEach((button) => button.onclick = () => {
+    state.active = button.dataset.tab; state.editingId = null; render();
+  });
+}
+
+function renderForm() {
+  const entity = entities[state.active];
+  const record = state.editingId ? findById(state.active, state.editingId) : null;
+  $('#form-title').textContent = `${record ? 'Editar' : 'Agregar'} ${entity.singular}`;
+  $('#form-help').textContent = state.active === 'reservaciones' ? 'La habitación debe pertenecer al hotel seleccionado.' : 'Todos los campos son obligatorios.';
+  $('#entity-form').innerHTML = entity.fields.map(([name, label, type, attrs = {}]) => fieldHtml(name, label, type, attrs, record)).join('') +
+    `<div class="buttons"><button class="primary" type="submit">${record ? 'Guardar cambios' : 'Guardar registro'}</button>${record ? '<button class="secondary" type="button" id="cancel-edit">Cancelar</button>' : ''}</div>`;
+  $('#entity-form').onsubmit = saveRecord;
+  $('#cancel-edit')?.addEventListener('click', () => { state.editingId = null; render(); });
+}
+
+function fieldHtml(name, label, type, attrs, record) {
+  const value = idOf(record?.[name]) ?? '';
+  if (type === 'select') {
+    const options = state.data[attrs.source] || [];
+    const display = attrs.source === 'hoteles' ? hotelName : attrs.source === 'habitaciones' ? roomName : clientName;
+    return `<label>${label}<select name="${name}" required><option value="">Selecciona una opción</option>${options.map((item) => `<option value="${item._id}" ${item._id === value ? 'selected' : ''}>${escapeHtml(display(item))}</option>`).join('')}</select></label>`;
+  }
+  if (type === 'textarea') return `<label>${label}<textarea name="${name}" required>${escapeHtml(value)}</textarea></label>`;
+  if (type === 'checkbox') return `<label><span>${label}</span><select name="${name}" required><option value="true" ${value === true || value === 'true' ? 'selected' : ''}>Sí</option><option value="false" ${value === false || value === 'false' ? 'selected' : ''}>No</option></select></label>`;
+  const shownValue = type === 'date' && value ? String(value).slice(0, 10) : value;
+  const extra = Object.entries(attrs).map(([key, val]) => `${key}="${val}"`).join(' ');
+  const required = type === 'password' && state.editingId ? '' : 'required';
+  return `<label>${label}<input name="${name}" type="${type}" value="${escapeHtml(shownValue)}" ${extra} ${required}></label>`;
+}
+
+async function saveRecord(event) {
+  event.preventDefault();
+  const values = Object.fromEntries(new FormData(event.currentTarget));
+  if ('disponibilidad' in values) values.disponibilidad = values.disponibilidad === 'true';
+  ['estrellas', 'precio', 'numeroPersonas', 'calificacion'].forEach((name) => { if (name in values) values[name] = Number(values[name]); });
+  if (state.active === 'clientes' && !values.password) delete values.password;
+  try {
+    if (state.editingId) await api.update(state.active, state.editingId, values);
+    else await api.create(state.active, values);
+    notify('Registro guardado correctamente'); state.editingId = null; await loadData();
+  } catch (error) { notify(error.message, true); }
+}
+
+function renderList() {
+  const entity = entities[state.active];
+  $('#list-title').textContent = entity.label;
+  const items = state.data[state.active] || [];
+  $('#entity-list').innerHTML = items.length ? items.map((item) => {
+    const title = state.active === 'habitaciones' ? item.tipo : state.active === 'reservaciones' ? `Reservación ${item._id.slice(-6)}` : state.active === 'comentarios' ? 'Comentario' : item.nombre;
+    return `<article class="card"><div><h3>${escapeHtml(title)}</h3><p>${entity.summary(item).filter(Boolean).map(escapeHtml).join('<br>')}</p></div><div class="card-actions"><button class="secondary" data-edit="${item._id}">Editar</button><button class="danger" data-delete="${item._id}">Eliminar</button></div></article>`;
+  }).join('') : '<p class="empty">Aún no hay registros en esta colección.</p>';
+  document.querySelectorAll('[data-edit]').forEach((button) => button.onclick = () => { state.editingId = button.dataset.edit; renderForm(); window.scrollTo({ top: 180, behavior: 'smooth' }); });
+  document.querySelectorAll('[data-delete]').forEach((button) => button.onclick = () => deleteRecord(button.dataset.delete));
+}
+
+async function deleteRecord(id) {
+  if (!confirm('¿Deseas eliminar este registro?')) return;
+  try { await api.remove(state.active, id); notify('Registro eliminado'); await loadData(); }
+  catch (error) { notify(error.message, true); }
+}
+
+function notify(message, isError = false) {
+  const toast = $('#toast'); toast.textContent = message; toast.className = `show ${isError ? 'error' : ''}`;
+  clearTimeout(window.toastTimer); window.toastTimer = setTimeout(() => { toast.className = ''; }, 3500);
+}
+
+loadData();
