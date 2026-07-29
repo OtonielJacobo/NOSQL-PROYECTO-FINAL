@@ -80,8 +80,20 @@ app.get('/reservaciones', async (req, res) => {
 app.post('/reservaciones', async (req, res) => {
     try {
         await validarReferenciasReservacion(req.body);
-        await validarDisponibilidadFechas(req.body.habitacionId, req.body.fechaEntrada, req.body.fechaSalida);
-        const reservacion = new Reservacion(req.body);
+        const habitacionSolicitada = await Habitacion.findById(req.body.habitacionId);
+        const habitacionesDisponibles = await buscarHabitacionesDisponibles(
+            req.body.hotelId,
+            habitacionSolicitada.tipo,
+            req.body.fechaEntrada,
+            req.body.fechaSalida
+        );
+        const habitacionDisponible = habitacionesDisponibles.find(
+            (habitacion) => String(habitacion._id) === String(req.body.habitacionId)
+        );
+        if (!habitacionDisponible) {
+            throw new Error(`No hay habitaciones ${habitacionSolicitada.tipo} disponibles para las fechas solicitadas`);
+        }
+        const reservacion = new Reservacion({ ...req.body, habitacionId: habitacionDisponible._id });
         const guardarReservacion = await reservacion.save();
         res.status(201).json(guardarReservacion);
     } catch (error) {
@@ -282,11 +294,14 @@ const habitacionSchema = new mongoose.Schema(
     {
         hotelId: {type: mongoose.Schema.Types.ObjectId, ref: 'Hotel', required: true},
         tipo: {type: String, required: true},
+        numero: {type: Number, required: true, min: 1},
         precio: {type: Number, required: true},
         disponibilidad: {type: Boolean, required: true}
     },
     { timestamps: true }
 );
+// El nÃºmero solo debe repetirse en hoteles diferentes. El Ã­ndice sparse conserva los registros antiguos que aÃºn no tienen nÃºmero.
+habitacionSchema.index({ hotelId: 1, numero: 1 }, { unique: true, sparse: true });
 const Habitacion = mongoose.model('Habitacion', habitacionSchema, 'habitaciones');
 
 // Verificamos que las referencias apunten a documentos existentes y relacionados.
@@ -300,6 +315,7 @@ async function validarReferenciasReservacion({ hotelId, habitacionId, clienteId 
     if (!hotel) throw new Error('El hotel indicado no existe');
     if (!habitacion) throw new Error('La habitacion indicada no existe');
     if (!cliente) throw new Error('El cliente indicado no existe');
+    if (!habitacion.disponibilidad) throw new Error('La habitacion no está disponible para reservar');
     if (String(habitacion.hotelId) !== String(hotel._id)) {
         throw new Error('La habitacion no pertenece al hotel indicado');
     }
@@ -320,6 +336,33 @@ async function validarDisponibilidadFechas(habitacionId, fechaEntrada, fechaSali
     }
 }
 
+async function buscarHabitacionesDisponibles(hotelId, tipo, fechaEntrada, fechaSalida) {
+    const habitacionesDelTipo = await Habitacion.find({ hotelId, tipo, disponibilidad: true });
+    if (!habitacionesDelTipo.length) return [];
+
+    const habitacionesOcupadas = await Reservacion.find({
+        habitacionId: { $in: habitacionesDelTipo.map((habitacion) => habitacion._id) },
+        fechaEntrada: { $lt: new Date(fechaSalida) },
+        fechaSalida: { $gt: new Date(fechaEntrada) }
+    }).distinct('habitacionId');
+
+    const idsOcupados = new Set(habitacionesOcupadas.map(String));
+    return habitacionesDelTipo.filter((habitacion) => !idsOcupados.has(String(habitacion._id)));
+}
+
+app.get('/habitaciones-disponibles', async (req, res) => {
+    try {
+        const { hotelId, tipo, fechaEntrada, fechaSalida } = req.query;
+        if (!hotelId || !tipo || !fechaEntrada || !fechaSalida) {
+            return res.status(400).json({ message: 'Faltan datos para consultar la disponibilidad' });
+        }
+        const habitaciones = await buscarHabitacionesDisponibles(hotelId, tipo, fechaEntrada, fechaSalida);
+        res.json(habitaciones);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
 async function validarReferenciasComentario({ hotelId, clienteId }) {
     const [hotel, cliente] = await Promise.all([
         Hotel.findById(hotelId),
@@ -332,6 +375,14 @@ async function validarReferenciasComentario({ hotelId, clienteId }) {
 async function validarHotelHabitacion(hotelId) {
     if (!await Hotel.exists({ _id: hotelId })) {
         throw new Error('El hotel indicado no existe');
+    }
+}
+
+async function validarNumeroHabitacion(hotelId, numero, habitacionId = null) {
+    const filtro = { hotelId, numero };
+    if (habitacionId) filtro._id = { $ne: habitacionId };
+    if (await Habitacion.exists(filtro)) {
+        throw new Error(`El nÃºmero de habitaciÃ³n ${numero} ya estÃ¡ asignado en este hotel`);
     }
 }
 
@@ -455,11 +506,13 @@ app.post('/habitaciones', async (req, res) => {
     const habitacion = new Habitacion({
         hotelId: req.body.hotelId,
         tipo: req.body.tipo,
+        numero: req.body.numero,
         precio: req.body.precio,
         disponibilidad: req.body.disponibilidad
     });
     try {
         await validarHotelHabitacion(habitacion.hotelId);
+        await validarNumeroHabitacion(habitacion.hotelId, habitacion.numero);
         const guardadaHabitacion = await habitacion.save();
         res.status(201).json(guardadaHabitacion);
     } catch (error) {
@@ -475,9 +528,11 @@ app.put('/habitaciones/:id', async (req, res) => {
         }
         habitacion.hotelId = req.body.hotelId ?? habitacion.hotelId;
         habitacion.tipo = req.body.tipo ?? habitacion.tipo;
+        habitacion.numero = req.body.numero ?? habitacion.numero;
         habitacion.precio = req.body.precio ?? habitacion.precio;
         habitacion.disponibilidad = req.body.disponibilidad ?? habitacion.disponibilidad;
         await validarHotelHabitacion(habitacion.hotelId);
+        await validarNumeroHabitacion(habitacion.hotelId, habitacion.numero, habitacion._id);
         const actualizadaHabitacion = await habitacion.save();
         res.json(actualizadaHabitacion);
     } catch (error) {

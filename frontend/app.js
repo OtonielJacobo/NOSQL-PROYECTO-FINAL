@@ -150,7 +150,12 @@ function renderizarHoteles() {
   }
 
   const html = visibles.map(hotel => {
-    const habsDelHotel = habitaciones.filter(h => h.hotelId === hotel._id && h.disponibilidad);
+    const habsDelHotel = habitaciones.filter(h => h.hotelId === hotel._id && h.disponibilidad === true);
+    const tiposDeHabitacion = Object.values(habsDelHotel.reduce((grupos, habitacion) => {
+      if (!grupos[habitacion.tipo]) grupos[habitacion.tipo] = { tipo: habitacion.tipo, habitaciones: [] };
+      grupos[habitacion.tipo].habitaciones.push(habitacion);
+      return grupos;
+    }, {}));
     const estrellasHtml = '⭐'.repeat(hotel.estrellas || 1);
     const calificacion = calificacionPromedio(hotel._id);
     const listaComentarios = comentariosDeHotel(hotel._id);
@@ -171,15 +176,22 @@ function renderizarHoteles() {
 
         <div class="habitaciones-container">
           <h4 style="margin-top:0; color: #62748a;">Habitaciones Disponibles:</h4>
-          ${habsDelHotel.length > 0 ? habsDelHotel.map(hab => `
+          ${tiposDeHabitacion.length > 0 ? tiposDeHabitacion.map(grupo => {
+            const habitacionBase = grupo.habitaciones[0];
+            const precios = grupo.habitaciones.map((habitacion) => habitacion.precio);
+            const precioMinimoTipo = Math.min(...precios);
+            const precioMaximoTipo = Math.max(...precios);
+            const textoPrecio = precioMinimoTipo === precioMaximoTipo ? `$${precioMinimoTipo}` : `Desde $${precioMinimoTipo}`;
+            return `
             <div class="habitacion-item">
               <div>
-                <div class="hab-tipo">${escapeHtml(hab.tipo)}</div>
-                <div class="hab-precio">$${hab.precio} / noche</div>
+                <div class="hab-tipo">${escapeHtml(grupo.tipo)} · ${grupo.habitaciones.length} habitación(es)</div>
+                <div class="hab-precio">${textoPrecio} / noche</div>
               </div>
-              <button class="btn-reservar" data-reservar data-hotel="${hotel._id}" data-habitacion="${hab._id}">Reservar</button>
+              <button class="btn-reservar" data-reservar data-hotel="${hotel._id}" data-habitacion="${habitacionBase._id}">Reservar</button>
             </div>
-          `).join('') : '<div style="color: #db3a34; font-size: 14px;">No hay habitaciones disponibles.</div>'}
+          `;
+          }).join('') : '<div style="color: #db3a34; font-size: 14px;">No hay habitaciones disponibles.</div>'}
         </div>
 
         <div class="comentarios-container">
@@ -236,6 +248,7 @@ function abrirReservaModal(hotelId, habitacionId) {
   const hotel = hoteles.find((h) => h._id === hotelId);
   const habitacion = habitaciones.find((h) => h._id === habitacionId);
   if (!hotel || !habitacion) return notify('No fue posible cargar la habitación seleccionada', true);
+  if (habitacion.disponibilidad !== true) return notify('Esta habitación no está disponible para reservar', true);
 
   const hoy = new Date().toISOString().slice(0, 10);
   document.getElementById('reserva-resumen').innerHTML =
@@ -245,8 +258,12 @@ function abrirReservaModal(hotelId, habitacionId) {
   form.reset();
   form.dataset.hotel = hotelId;
   form.dataset.habitacion = habitacionId;
+  form.dataset.tipo = habitacion.tipo;
   form.fechaEntrada.min = hoy;
   form.fechaSalida.min = hoy;
+  form.habitacionId.innerHTML = '';
+  document.getElementById('reserva-habitacion-caja').hidden = true;
+  document.getElementById('reserva-disponibilidad').textContent = '';
 
   abrirModal('modal-reserva');
 }
@@ -254,7 +271,8 @@ function abrirReservaModal(hotelId, habitacionId) {
 async function enviarReserva(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  const { hotel, habitacion } = form.dataset;
+  const { hotel, habitacion: habitacionInicial } = form.dataset;
+  const habitacion = form.habitacionId.value || habitacionInicial;
   const fechaEntrada = form.fechaEntrada.value;
   const fechaSalida = form.fechaSalida.value;
   const numeroPersonas = Number(form.numeroPersonas.value);
@@ -264,7 +282,7 @@ async function enviarReserva(event) {
   }
 
   try {
-    await api.create('reservaciones', {
+    const reservacion = await api.create('reservaciones', {
       hotelId: hotel,
       habitacionId: habitacion,
       clienteId: sesion._id,
@@ -272,10 +290,39 @@ async function enviarReserva(event) {
       fechaSalida,
       numeroPersonas,
     });
-    notify('¡Reservación creada con éxito!');
+    const habitacionAsignada = habitaciones.find((item) => item._id === reservacion.habitacionId);
+    notify(habitacionAsignada ? `¡Reservación creada! Habitación ${habitacionAsignada.numero} asignada.` : '¡Reservación creada con éxito!');
     cerrarModal('modal-reserva');
   } catch (error) {
     notify(error.message, true);
+  }
+}
+
+async function actualizarHabitacionesDisponibles() {
+  const form = document.getElementById('form-reserva');
+  const { hotel, tipo } = form.dataset;
+  const caja = document.getElementById('reserva-habitacion-caja');
+  const selector = form.habitacionId;
+  const mensaje = document.getElementById('reserva-disponibilidad');
+  const boton = form.querySelector('button[type="submit"]');
+  if (!hotel || !tipo || !form.fechaEntrada.value || !form.fechaSalida.value || form.fechaSalida.value <= form.fechaEntrada.value) {
+    caja.hidden = true;
+    selector.innerHTML = '';
+    mensaje.textContent = '';
+    boton.disabled = false;
+    return;
+  }
+  try {
+    const parametros = new URLSearchParams({ hotelId: hotel, tipo, fechaEntrada: form.fechaEntrada.value, fechaSalida: form.fechaSalida.value });
+    const disponibles = await api.get(`habitaciones-disponibles?${parametros}`);
+    selector.innerHTML = disponibles.map((habitacion) =>
+      `<option value="${habitacion._id}">Habitación ${escapeHtml(habitacion.numero)}</option>`).join('');
+    caja.hidden = disponibles.length <= 1;
+    mensaje.textContent = disponibles.length ? `${disponibles.length} habitación(es) ${tipo} disponible(s).` : `No hay habitaciones ${tipo} disponibles para esas fechas.`;
+    boton.disabled = disponibles.length === 0;
+  } catch (error) {
+    mensaje.textContent = error.message;
+    boton.disabled = true;
   }
 }
 
@@ -416,6 +463,7 @@ function continuarDespuesDeLogin() {
 // ---------- Modales genéricos ----------
 function configurarModales() {
   document.getElementById('form-reserva').addEventListener('submit', enviarReserva);
+  document.querySelectorAll('#form-reserva input[type="date"]').forEach((input) => input.addEventListener('change', actualizarHabitacionesDisponibles));
   document.getElementById('form-comentario').addEventListener('submit', enviarComentario);
   document.getElementById('form-login').addEventListener('submit', enviarLogin);
   document.getElementById('form-registro').addEventListener('submit', enviarRegistro);

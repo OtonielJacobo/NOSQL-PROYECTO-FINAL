@@ -522,6 +522,8 @@
       <form id="form-reserva">
         <label>Fecha de entrada<input type="date" name="fechaEntrada" required></label>
         <label>Fecha de salida<input type="date" name="fechaSalida" required></label>
+        <label id="reserva-habitacion-caja" hidden>Número de habitación<select name="habitacionId"></select></label>
+        <p id="reserva-disponibilidad" aria-live="polite"></p>
         <label>Número de personas<input type="number" name="numeroPersonas" min="1" value="1" required></label>
         <button class="btn-primary" type="submit">Reservar ahora</button>
       </form>
