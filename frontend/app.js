@@ -1,4 +1,4 @@
-// app.js - Front de la página principal
+// app.js - Este es el principal
 
 let hoteles = [];
 let habitaciones = [];
