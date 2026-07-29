@@ -1,35 +1,158 @@
-// app.js - Este es el principal pruebas
+// app.js - Sitio público de Hotelia (listado, búsqueda, reservaciones y comentarios)
+// Se apoya en api.js (fetch genérico) y consume la API REST de index.js
 
+// ---------- Estado global ----------
 let hoteles = [];
 let habitaciones = [];
+let comentarios = [];
+let clientes = [];              // se usa solo para validar login (ver nota en iniciarSesion)
+let sesion = null;              // { _id, nombre, email } del cliente autenticado
+let reservaIntentada = null;    // guarda { hotelId, habitacionId } si el usuario intenta reservar sin sesión
+
+const SESSION_KEY = 'hoteliaCliente';
 
 document.addEventListener('DOMContentLoaded', async () => {
+  restaurarSesion();
+  configurarBusqueda();
+  configurarModales();
   await cargarDatos();
 });
 
+// ---------- Carga de datos ----------
 async function cargarDatos() {
   try {
-    hoteles = await api.get('hoteles');
-    habitaciones = await api.get('habitaciones');
+    [hoteles, habitaciones, comentarios, clientes] = await Promise.all([
+      api.get('hoteles'),
+      api.get('habitaciones'),
+      api.get('comentarios'),
+      api.get('clientes'),
+    ]);
     renderizarHoteles();
   } catch (error) {
-    console.error("Error:", error);
-    document.getElementById('lista-hoteles').innerHTML = 
+    console.error('Error:', error);
+    document.getElementById('lista-hoteles').innerHTML =
       `<div class="empty-state" style="color: red;">Error al conectar con la base de datos.</div>`;
   }
 }
 
+// ---------- Sesión de cliente ----------
+// Nota: el backend no tiene un endpoint de login ni hashea contraseñas, así que
+// aquí el "login" solo compara contra la lista de /clientes en el navegador.
+// Es suficiente para un proyecto escolar, pero no es un mecanismo seguro para producción.
+function restaurarSesion() {
+  const guardada = localStorage.getItem(SESSION_KEY);
+  if (guardada) {
+    try { sesion = JSON.parse(guardada); } catch { sesion = null; }
+  }
+  actualizarUISesion();
+}
+
+function guardarSesion(cliente) {
+  sesion = { _id: cliente._id, nombre: cliente.nombre, email: cliente.email };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
+  actualizarUISesion();
+}
+
+function cerrarSesion() {
+  sesion = null;
+  localStorage.removeItem(SESSION_KEY);
+  actualizarUISesion();
+  notify('Sesión cerrada');
+}
+
+function actualizarUISesion() {
+  const caja = document.getElementById('cuenta-caja');
+  if (sesion) {
+    caja.innerHTML = `
+      <span class="cuenta-nombre">👤 ${escapeHtml(sesion.nombre)}</span>
+      <button class="btn-admin" id="btn-mis-reservaciones" type="button">Mis reservaciones</button>
+      <button class="btn-admin" id="btn-cerrar-sesion" type="button">Salir</button>`;
+    document.getElementById('btn-mis-reservaciones').onclick = abrirMisReservaciones;
+    document.getElementById('btn-cerrar-sesion').onclick = cerrarSesion;
+  } else {
+    caja.innerHTML = `<button class="btn-admin" id="btn-abrir-sesion" type="button">Iniciar sesión</button>`;
+    document.getElementById('btn-abrir-sesion').onclick = () => abrirAuthModal();
+  }
+}
+
+// ---------- Búsqueda y filtros ----------
+function configurarBusqueda() {
+  const form = document.getElementById('form-busqueda');
+  form.addEventListener('input', renderizarHoteles);
+  form.addEventListener('submit', (event) => { event.preventDefault(); renderizarHoteles(); });
+  document.getElementById('btn-limpiar-busqueda').addEventListener('click', () => {
+    form.reset();
+    renderizarHoteles();
+  });
+}
+
+function obtenerFiltros() {
+  const form = document.getElementById('form-busqueda');
+  const datos = new FormData(form);
+  return {
+    ubicacion: (datos.get('ubicacion') || '').toLowerCase().trim(),
+    estrellas: Number(datos.get('estrellas') || 0),
+    orden: datos.get('orden') || 'nombre',
+  };
+}
+
+function filtrarYOrdenar(listaHoteles) {
+  const { ubicacion, estrellas, orden } = obtenerFiltros();
+  let resultado = listaHoteles.filter((hotel) =>
+    (!ubicacion || hotel.ubicacion.toLowerCase().includes(ubicacion)) &&
+    (hotel.estrellas || 0) >= estrellas
+  );
+  if (orden === 'precio-asc' || orden === 'precio-desc') {
+    resultado = resultado.slice().sort((a, b) => {
+      const precioA = precioMinimo(a._id);
+      const precioB = precioMinimo(b._id);
+      return orden === 'precio-asc' ? precioA - precioB : precioB - precioA;
+    });
+  } else if (orden === 'estrellas') {
+    resultado = resultado.slice().sort((a, b) => (b.estrellas || 0) - (a.estrellas || 0));
+  } else {
+    resultado = resultado.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+  return resultado;
+}
+
+function precioMinimo(hotelId) {
+  const precios = habitaciones.filter((h) => h.hotelId === hotelId && h.disponibilidad).map((h) => h.precio);
+  return precios.length ? Math.min(...precios) : Infinity;
+}
+
+// ---------- Calificaciones ----------
+function comentariosDeHotel(hotelId) {
+  return comentarios.filter((c) => (c.hotelId?._id || c.hotelId) === hotelId);
+}
+
+function calificacionPromedio(hotelId) {
+  const lista = comentariosDeHotel(hotelId);
+  if (!lista.length) return null;
+  const suma = lista.reduce((total, c) => total + (c.calificacion || 0), 0);
+  return { promedio: (suma / lista.length).toFixed(1), total: lista.length };
+}
+
+// ---------- Render principal ----------
 function renderizarHoteles() {
   const contenedor = document.getElementById('lista-hoteles');
-  
+
   if (!hoteles || hoteles.length === 0) {
     contenedor.innerHTML = `<div class="empty-state">Actualmente no hay hoteles registrados.</div>`;
     return;
   }
 
-  const html = hoteles.map(hotel => {
+  const visibles = filtrarYOrdenar(hoteles);
+  if (visibles.length === 0) {
+    contenedor.innerHTML = `<div class="empty-state">No encontramos hoteles con esos filtros. Intenta ajustar tu búsqueda.</div>`;
+    return;
+  }
+
+  const html = visibles.map(hotel => {
     const habsDelHotel = habitaciones.filter(h => h.hotelId === hotel._id && h.disponibilidad);
     const estrellasHtml = '⭐'.repeat(hotel.estrellas || 1);
+    const calificacion = calificacionPromedio(hotel._id);
+    const listaComentarios = comentariosDeHotel(hotel._id);
 
     return `
       <article class="hotel-card">
@@ -38,8 +161,11 @@ function renderizarHoteles() {
           <h3>${escapeHtml(hotel.nombre)}</h3>
           <p>📍 ${escapeHtml(hotel.ubicacion)}</p>
           <p class="estrellas">${estrellasHtml}</p>
+          <p class="rating-resumen">
+            ${calificacion ? `⭐ ${calificacion.promedio} · ${calificacion.total} comentario${calificacion.total === 1 ? '' : 's'}` : 'Sin comentarios todavía'}
+          </p>
         </div>
-        
+
         <div class="habitaciones-container">
           <h4 style="margin-top:0; color: #62748a;">Habitaciones Disponibles:</h4>
           ${habsDelHotel.length > 0 ? habsDelHotel.map(hab => `
@@ -48,16 +174,264 @@ function renderizarHoteles() {
                 <div class="hab-tipo">${escapeHtml(hab.tipo)}</div>
                 <div class="hab-precio">$${hab.precio} / noche</div>
               </div>
-              <button class="btn-reservar" onclick="alert('Funcionalidad de reservación en desarrollo')">Reservar</button>
+              <button class="btn-reservar" data-reservar data-hotel="${hotel._id}" data-habitacion="${hab._id}">Reservar</button>
             </div>
           `).join('') : '<div style="color: #db3a34; font-size: 14px;">No hay habitaciones disponibles.</div>'}
+        </div>
+
+        <div class="comentarios-container">
+          <button class="btn-toggle-comentarios" data-toggle-comentarios="${hotel._id}" type="button">
+            💬 Ver comentarios (${listaComentarios.length})
+          </button>
+          <div class="comentarios-lista" id="comentarios-${hotel._id}" hidden>
+            ${listaComentarios.length ? listaComentarios.map(c => `
+              <div class="comentario-item">
+                <div class="comentario-cabecera">
+                  <strong>${escapeHtml(c.clienteId?.nombre || 'Cliente')}</strong>
+                  <span>${'⭐'.repeat(c.calificacion)}</span>
+                </div>
+                <p>${escapeHtml(c.comentario)}</p>
+              </div>
+            `).join('') : '<p class="empty-mini">Aún no hay comentarios para este hotel.</p>'}
+            <button class="btn-comentar" data-comentar="${hotel._id}" type="button">Escribir un comentario</button>
+          </div>
         </div>
       </article>
     `;
   }).join('');
 
   contenedor.innerHTML = html;
+  enlazarEventosTarjetas();
 }
 
-const escapeHtml = (text) => 
+function enlazarEventosTarjetas() {
+  document.querySelectorAll('[data-reservar]').forEach((boton) => {
+    boton.onclick = () => intentarReservar(boton.dataset.hotel, boton.dataset.habitacion);
+  });
+  document.querySelectorAll('[data-toggle-comentarios]').forEach((boton) => {
+    boton.onclick = () => {
+      const panel = document.getElementById(`comentarios-${boton.dataset.toggleComentarios}`);
+      panel.hidden = !panel.hidden;
+    };
+  });
+  document.querySelectorAll('[data-comentar]').forEach((boton) => {
+    boton.onclick = () => abrirComentarioModal(boton.dataset.comentar);
+  });
+}
+
+// ---------- Flujo de reservación ----------
+function intentarReservar(hotelId, habitacionId) {
+  if (!sesion) {
+    reservaIntentada = { hotelId, habitacionId };
+    abrirAuthModal('Inicia sesión para completar tu reservación');
+    return;
+  }
+  abrirReservaModal(hotelId, habitacionId);
+}
+
+function abrirReservaModal(hotelId, habitacionId) {
+  const hotel = hoteles.find((h) => h._id === hotelId);
+  const habitacion = habitaciones.find((h) => h._id === habitacionId);
+  if (!hotel || !habitacion) return notify('No fue posible cargar la habitación seleccionada', true);
+
+  const hoy = new Date().toISOString().slice(0, 10);
+  document.getElementById('reserva-resumen').innerHTML =
+    `<strong>${escapeHtml(hotel.nombre)}</strong> · ${escapeHtml(habitacion.tipo)} · $${habitacion.precio} / noche`;
+
+  const form = document.getElementById('form-reserva');
+  form.reset();
+  form.dataset.hotel = hotelId;
+  form.dataset.habitacion = habitacionId;
+  form.fechaEntrada.min = hoy;
+  form.fechaSalida.min = hoy;
+
+  abrirModal('modal-reserva');
+}
+
+async function enviarReserva(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const { hotel, habitacion } = form.dataset;
+  const fechaEntrada = form.fechaEntrada.value;
+  const fechaSalida = form.fechaSalida.value;
+  const numeroPersonas = Number(form.numeroPersonas.value);
+
+  if (fechaSalida <= fechaEntrada) {
+    return notify('La fecha de salida debe ser posterior a la fecha de entrada', true);
+  }
+
+  try {
+    await api.create('reservaciones', {
+      hotelId: hotel,
+      habitacionId: habitacion,
+      clienteId: sesion._id,
+      fechaEntrada,
+      fechaSalida,
+      numeroPersonas,
+    });
+    notify('¡Reservación creada con éxito!');
+    cerrarModal('modal-reserva');
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
+// ---------- Mis reservaciones ----------
+async function abrirMisReservaciones() {
+  try {
+    const todas = await api.get('reservaciones');
+    const propias = todas.filter((r) => (r.clienteId?._id || r.clienteId) === sesion._id);
+    const lista = document.getElementById('mis-reservaciones-lista');
+    lista.innerHTML = propias.length ? propias.map((r) => `
+      <div class="reserva-item">
+        <div>
+          <strong>${escapeHtml(r.hotelId?.nombre || 'Hotel')}</strong>
+          <p>${escapeHtml(r.habitacionId?.tipo || '')} · ${formatDate(r.fechaEntrada)} — ${formatDate(r.fechaSalida)} · ${r.numeroPersonas} personas</p>
+        </div>
+        <button class="danger-mini" data-cancelar="${r._id}" type="button">Cancelar</button>
+      </div>
+    `).join('') : '<p class="empty-mini">Todavía no tienes reservaciones.</p>';
+
+    document.querySelectorAll('[data-cancelar]').forEach((boton) => {
+      boton.onclick = () => cancelarReserva(boton.dataset.cancelar);
+    });
+
+    abrirModal('modal-mis-reservaciones');
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
+async function cancelarReserva(id) {
+  if (!confirm('¿Deseas cancelar esta reservación?')) return;
+  try {
+    await api.remove('reservaciones', id);
+    notify('Reservación cancelada');
+    abrirMisReservaciones();
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
+// ---------- Comentarios ----------
+function abrirComentarioModal(hotelId) {
+  if (!sesion) {
+    reservaIntentada = null;
+    abrirAuthModal('Inicia sesión para dejar un comentario');
+    return;
+  }
+  const form = document.getElementById('form-comentario');
+  form.reset();
+  form.dataset.hotel = hotelId;
+  abrirModal('modal-comentario');
+}
+
+async function enviarComentario(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  try {
+    await api.create('comentarios', {
+      hotelId: form.dataset.hotel,
+      clienteId: sesion._id,
+      comentario: form.comentario.value,
+      calificacion: Number(form.calificacion.value),
+    });
+    notify('¡Gracias por tu comentario!');
+    cerrarModal('modal-comentario');
+    comentarios = await api.get('comentarios');
+    renderizarHoteles();
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
+// ---------- Autenticación (login / registro) ----------
+function abrirAuthModal(mensaje) {
+  document.getElementById('auth-mensaje').textContent = mensaje || '';
+  document.getElementById('form-login').reset();
+  document.getElementById('form-registro').reset();
+  mostrarPestanaAuth('login');
+  abrirModal('modal-auth');
+}
+
+function mostrarPestanaAuth(pestana) {
+  document.querySelectorAll('.auth-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.authTab === pestana));
+  document.getElementById('form-login').hidden = pestana !== 'login';
+  document.getElementById('form-registro').hidden = pestana !== 'registro';
+}
+
+async function enviarLogin(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const email = form.email.value.trim().toLowerCase();
+  const password = form.password.value;
+
+  try {
+    // Login del lado del cliente comparando contra /clientes (ver nota junto a `sesion`).
+    clientes = await api.get('clientes');
+    const cliente = clientes.find((c) => c.email?.toLowerCase() === email && c.password === password);
+    if (!cliente) return notify('Correo o contraseña incorrectos', true);
+
+    guardarSesion(cliente);
+    cerrarModal('modal-auth');
+    continuarDespuesDeLogin();
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
+async function enviarRegistro(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  try {
+    const cliente = await api.create('clientes', {
+      nombre: form.nombre.value.trim(),
+      email: form.email.value.trim().toLowerCase(),
+      password: form.password.value,
+    });
+    guardarSesion(cliente);
+    cerrarModal('modal-auth');
+    notify(`¡Bienvenido, ${cliente.nombre}!`);
+    continuarDespuesDeLogin();
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
+function continuarDespuesDeLogin() {
+  if (reservaIntentada) {
+    abrirReservaModal(reservaIntentada.hotelId, reservaIntentada.habitacionId);
+    reservaIntentada = null;
+  }
+}
+
+// ---------- Modales genéricos ----------
+function configurarModales() {
+  document.getElementById('form-reserva').addEventListener('submit', enviarReserva);
+  document.getElementById('form-comentario').addEventListener('submit', enviarComentario);
+  document.getElementById('form-login').addEventListener('submit', enviarLogin);
+  document.getElementById('form-registro').addEventListener('submit', enviarRegistro);
+
+  document.querySelectorAll('[data-auth-tab]').forEach((tab) => tab.onclick = () => mostrarPestanaAuth(tab.dataset.authTab));
+  document.querySelectorAll('[data-cerrar-modal]').forEach((boton) => boton.onclick = () => cerrarModal(boton.dataset.cerrarModal));
+  document.querySelectorAll('.modal-overlay').forEach((overlay) => {
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) cerrarModal(overlay.id); });
+  });
+}
+
+function abrirModal(id) { document.getElementById(id).classList.add('show'); }
+function cerrarModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// ---------- Utilidades ----------
+function notify(message, isError = false) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = `show ${isError ? 'error' : ''}`;
+  clearTimeout(window.toastTimer);
+  window.toastTimer = setTimeout(() => { toast.className = ''; }, 3500);
+}
+
+const formatDate = (value) => value ? new Date(value).toLocaleDateString('es-MX', { timeZone: 'UTC' }) : '';
+
+const escapeHtml = (text) =>
   String(text ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]);
