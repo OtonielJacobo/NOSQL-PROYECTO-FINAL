@@ -553,6 +553,7 @@ app.delete('/habitaciones/:id', async (req, res) => {
     }
 });
 
+module.exports = app;
 
 app.listen(port, () => {
   console.log(`Server corriendo en http://localhost:${port}`);
