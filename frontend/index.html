@@ -3,564 +3,224 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hotelia | Encuentra tu hotel ideal</title>
+  <title>Hotelia | Premium Hospitality</title>
   
-  <!-- Agregamos una fuente moderna de Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-  
-  <style>
-    :root { 
-      --primary: #4F46E5; /* Azul Indigo moderno */
-      --primary-hover: #4338CA;
-      --secondary: #10B981; /* Verde esmeralda para reservar */
-      --dark: #1E293B;
-      --muted: #64748B;
-      --bg: #F8FAFC;
-      --white: #FFFFFF;
-      --danger: #db3a34;
-    }
-    
-    * { box-sizing: border-box; }
-    
-    body { 
-      margin: 0; 
-      background: var(--bg); 
-      color: var(--dark); 
-      font-family: 'Poppins', sans-serif; 
-    }
-    
-    /* Header y Hero mejorados */
-    header { 
-      background: linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%); 
-      color: white; 
-      padding: 20px 0 100px 0; /* Padding inferior grande para superponer las tarjetas */
-      position: relative;
-    }
-    
-    .nav-container { 
-      max-width: 1200px; 
-      margin: 0 auto; 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      padding: 0 20px;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    
-    .nav-container h1 { 
-      margin: 0; 
-      font-size: 28px; 
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
-    
-    .nav-links { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-    .nav-links a { 
-      color: white; 
-      text-decoration: none; 
-      margin-left: 10px; 
-      font-weight: 600;
-      font-size: 15px;
-    }
-
-    #cuenta-caja { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .cuenta-nombre { font-weight: 600; font-size: 14px; margin-right: 4px; }
-    
-    .btn-admin {
-      background: rgba(255, 255, 255, 0.2);
-      padding: 10px 20px;
-      border-radius: 30px;
-      backdrop-filter: blur(5px);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      transition: all 0.3s ease;
-      color: white;
-      font-family: inherit;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    
-    .btn-admin:hover {
-      background: rgba(255, 255, 255, 0.3);
-      transform: translateY(-2px);
-    }
-    
-    .hero { 
-      text-align: center; 
-      padding: 50px 20px 20px; 
-    }
-    
-    .hero h2 { 
-      font-size: 42px; 
-      margin: 0 0 12px; 
-      font-weight: 700;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    
-    .hero p { 
-      font-size: 18px; 
-      opacity: 0.9; 
-      font-weight: 300;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-
-    /* Buscador */
-    .busqueda-container {
-      max-width: 1200px;
-      margin: 30px auto 0;
-      padding: 0 20px;
-    }
-
-    #form-busqueda {
-      background: var(--white);
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-      padding: 18px;
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr auto auto;
-      gap: 12px;
-      align-items: end;
-    }
-
-    #form-busqueda label {
-      display: grid;
-      gap: 5px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-    }
-
-    #form-busqueda input, #form-busqueda select {
-      border: 1px solid #E2E8F0;
-      border-radius: 8px;
-      padding: 10px;
-      font: inherit;
-      font-size: 14px;
-      color: var(--dark);
-    }
-
-    #form-busqueda button {
-      border: 0;
-      border-radius: 8px;
-      padding: 11px 16px;
-      font: inherit;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    #form-busqueda .btn-buscar { background: var(--primary); color: white; }
-    #form-busqueda .btn-buscar:hover { background: var(--primary-hover); }
-    #form-busqueda .btn-limpiar { background: #EEF2FF; color: var(--primary); }
-
-    @media (max-width: 760px) {
-      #form-busqueda { grid-template-columns: 1fr 1fr; }
-    }
-
-    /* Contenedor Principal (superpuesto al header) */
-    main { 
-      max-width: 1200px; 
-      margin: 30px auto 60px;
-      padding: 0 20px; 
-      position: relative;
-      z-index: 10;
-    }
-    
-    .hotel-grid { 
-      display: grid; 
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); 
-      gap: 30px; 
-    }
-    
-    /* Tarjetas más elegantes */
-    .hotel-card { 
-      background: var(--white); 
-      border-radius: 20px; 
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); 
-      overflow: hidden; 
-      display: flex; 
-      flex-direction: column;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      border: 1px solid rgba(0,0,0,0.02);
-    }
-    
-    .hotel-card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
-    }
-    
-    .hotel-img { 
-      height: 200px; 
-      background: linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%); 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      font-size: 60px; 
-      color: white;
-      text-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
-
-    .hotel-img img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    
-    .hotel-info { 
-      padding: 24px; 
-      flex-grow: 1; 
-      border-bottom: 1px solid #F1F5F9; 
-    }
-    
-    .hotel-info h3 { 
-      margin: 0 0 10px; 
-      font-size: 22px; 
-      color: var(--dark); 
-      font-weight: 700;
-    }
-    
-    .hotel-info p { 
-      margin: 6px 0; 
-      color: var(--muted); 
-      display: flex; 
-      align-items: center; 
-      gap: 8px; 
-      font-size: 14px;
-    }
-    
-    .estrellas { 
-      color: #F59E0B !important; 
-      font-size: 16px !important; 
-      letter-spacing: 2px; 
-      margin-top: 10px !important;
-    }
-
-    .rating-resumen { font-size: 13px !important; color: var(--muted) !important; }
-    
-    /* Sección de Habitaciones */
-    .habitaciones-container { 
-      padding: 20px 24px; 
-      background: #FAFAF9; 
-    }
-    
-    .habitaciones-container h4 {
-      margin-top: 0;
-      color: var(--dark) !important;
-      font-size: 15px;
-    }
-    
-    .habitacion-item { 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      padding: 14px 0; 
-      border-bottom: 1px dashed #E2E8F0; 
-    }
-    
-    .habitacion-item:last-child { 
-      border-bottom: none; 
-      padding-bottom: 0;
-    }
-    
-    .hab-tipo { 
-      font-weight: 600; 
-      color: var(--dark); 
-      font-size: 15px;
-    }
-    
-    .hab-precio { 
-      color: var(--primary); 
-      font-weight: 700; 
-      font-size: 14px;
-      margin-top: 2px;
-    }
-    
-    /* Botón animado */
-    .btn-reservar { 
-      background: var(--secondary); 
-      color: white; 
-      border: none; 
-      padding: 10px 18px; 
-      border-radius: 8px; 
-      cursor: pointer; 
-      font-weight: 600; 
-      font-family: inherit;
-      transition: all 0.2s ease; 
-      box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
-    }
-    
-    .btn-reservar:hover { 
-      background: #059669; 
-      transform: scale(1.05);
-      box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
-    }
-
-    /* Comentarios */
-    .comentarios-container { padding: 18px 24px 24px; }
-
-    .btn-toggle-comentarios {
-      background: none;
-      border: 1px solid #E2E8F0;
-      border-radius: 8px;
-      padding: 8px 12px;
-      font: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--dark);
-      cursor: pointer;
-      width: 100%;
-    }
-
-    .comentarios-lista { margin-top: 14px; display: grid; gap: 10px; }
-
-    .comentario-item {
-      background: #FAFAF9;
-      border-radius: 10px;
-      padding: 10px 12px;
-    }
-
-    .comentario-cabecera {
-      display: flex;
-      justify-content: space-between;
-      font-size: 13px;
-      margin-bottom: 4px;
-    }
-
-    .comentario-item p { margin: 0; font-size: 13px; color: var(--muted); }
-
-    .empty-mini { font-size: 13px; color: var(--muted); }
-
-    .btn-comentar {
-      margin-top: 6px;
-      background: #EEF2FF;
-      color: var(--primary);
-      border: none;
-      border-radius: 8px;
-      padding: 8px 12px;
-      font: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-    }
-    
-    .empty-state { 
-      grid-column: 1 / -1; 
-      text-align: center; 
-      padding: 60px; 
-      background: white;
-      border-radius: 20px;
-      color: var(--muted); 
-      font-size: 18px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); 
-    }
-
-    /* Modales */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.55);
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      z-index: 100;
-    }
-
-    .modal-overlay.show { display: flex; }
-
-    .modal-box {
-      background: white;
-      border-radius: 16px;
-      padding: 26px;
-      width: 100%;
-      max-width: 420px;
-      max-height: 85vh;
-      overflow-y: auto;
-      position: relative;
-    }
-
-    .modal-box h3 { margin-top: 0; }
-
-    .modal-cerrar {
-      position: absolute;
-      top: 14px; right: 16px;
-      border: none;
-      background: none;
-      font-size: 20px;
-      cursor: pointer;
-      color: var(--muted);
-    }
-
-    .modal-box form { display: grid; gap: 12px; margin-top: 14px; }
-    .modal-box form[hidden] { display: none; }
-    .modal-box label { display: grid; gap: 5px; font-size: 13px; font-weight: 600; color: #40536d; }
-    .modal-box input, .modal-box select, .modal-box textarea {
-      border: 1px solid #cbd8e8; border-radius: 8px; padding: 10px; font: inherit; color: var(--dark);
-    }
-    .modal-box textarea { resize: vertical; min-height: 70px; }
-    .modal-box .btn-primary {
-      border: 0; border-radius: 8px; padding: 11px; font: inherit; font-weight: 700;
-      background: var(--primary); color: white; cursor: pointer;
-    }
-    .modal-box .btn-primary:hover { background: var(--primary-hover); }
-
-    #reserva-resumen { background: #EEF2FF; border-radius: 8px; padding: 10px; font-size: 14px; }
-
-    .auth-tabs { display: flex; gap: 8px; margin-top: 10px; }
-    .auth-tab {
-      flex: 1; border: 1px solid #E2E8F0; background: #F8FAFC; border-radius: 8px;
-      padding: 9px; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; color: var(--muted);
-    }
-    .auth-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
-    #auth-mensaje { font-size: 13px; color: var(--danger); min-height: 16px; margin-top: 4px; }
-
-    .reserva-item {
-      display: flex; justify-content: space-between; align-items: center; gap: 10px;
-      border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; margin-bottom: 10px; font-size: 14px;
-    }
-    .reserva-item p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
-    .danger-mini {
-      border: none; background: #fff0ef; color: var(--danger); border-radius: 8px;
-      padding: 7px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
-    }
-
-    /* Toast */
-    #toast {
-      position: fixed; right: 20px; bottom: 20px; color: #fff; background: #193f68;
-      padding: 13px 17px; border-radius: 9px; box-shadow: 0 12px 30px #102a4355;
-      transform: translateY(90px); opacity: 0; transition: .25s; z-index: 200;
-    }
-    #toast.show { transform: translateY(0); opacity: 1; }
-    #toast.error { background: #b72d27; }
-  </style>
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/index.css">
 </head>
 <body>
-  <header>
+  
+  <!-- Navigation -->
+  <header class="header" id="main-header">
     <div class="nav-container">
-      <h1>🏨 Hotelia</h1>
-      <div class="nav-links">
-        <a href="admin.html" class="btn-admin" id="enlace-admin" hidden>Acceso Admin</a>
-        <div id="cuenta-caja"></div>
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M16 21v-2a4 4 0 0 0-4-4H4"/><path d="M7 21v-4a8 8 0 0 1 8-8v0a8 8 0 0 1 8 8v4"/><path d="M10 9l2-2 2 2"/><path d="M12 7v8"/></svg>
+        <span>Hotelia</span>
       </div>
-    </div>
-    <div class="hero">
-      <h2>Encuentra tu alojamiento ideal</h2>
-      <p>Compara precios, descubre los mejores hoteles y reserva tus vacaciones soñadas en un par de clics.</p>
+      <nav class="nav-links">
+        <a href="admin.html" class="btn btn-secondary btn-sm" id="enlace-admin" hidden>Panel Admin</a>
+        <div id="cuenta-caja">
+          <!-- Auth buttons injected via JS -->
+        </div>
+      </nav>
     </div>
   </header>
 
-  <div class="busqueda-container">
-    <form id="form-busqueda">
-      <label>Destino
-        <input type="text" name="ubicacion" placeholder="Ciudad o lugar" />
-      </label>
-      <label>Estrellas mínimas
-        <select name="estrellas">
-          <option value="0">Cualquiera</option>
-          <option value="3">3+</option>
-          <option value="4">4+</option>
-          <option value="5">5</option>
-        </select>
-      </label>
-      <label>Ordenar por
-        <select name="orden">
-          <option value="nombre">Nombre</option>
-          <option value="precio-asc">Precio: menor a mayor</option>
-          <option value="precio-desc">Precio: mayor a menor</option>
-          <option value="estrellas">Estrellas</option>
-        </select>
-      </label>
-      <button type="submit" class="btn-buscar">Buscar</button>
-      <button type="button" id="btn-limpiar-busqueda" class="btn-limpiar">Limpiar</button>
-    </form>
-  </div>
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-bg">
+      <img src="img/hero.webp" alt="Luxury Hotel">
+      <div class="hero-overlay"></div>
+    </div>
+    <div class="hero-content">
+      <h1 class="hero-title">Experimenta un lujo inigualable</h1>
+      <p class="hero-subtitle">Estancias seleccionadas para el viajero moderno. Descubre tu próxima escapada.</p>
+    </div>
 
-  <main>
+    <!-- Floating Search Bar -->
+    <div class="search-island">
+      <form id="form-busqueda" class="search-form">
+        <div class="search-field">
+          <label for="search-ubicacion">Destino</label>
+          <input type="text" id="search-ubicacion" name="ubicacion" placeholder="¿A dónde vas?" />
+        </div>
+        <div class="search-field">
+          <label for="search-estrellas">Calificación</label>
+          <select id="search-estrellas" name="estrellas">
+            <option value="0">Cualquiera</option>
+            <option value="3">3+ Estrellas</option>
+            <option value="4">4+ Estrellas</option>
+            <option value="5">5 Estrellas</option>
+          </select>
+        </div>
+        <div class="search-field">
+          <label for="search-orden">Ordenar por</label>
+          <select id="search-orden" name="orden">
+            <option value="nombre">Nombre</option>
+            <option value="precio-asc">Precio: menor a mayor</option>
+            <option value="precio-desc">Precio: mayor a menor</option>
+            <option value="estrellas">Estrellas</option>
+          </select>
+        </div>
+        <div class="search-actions">
+          <button type="submit" class="btn btn-primary btn-search">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            Buscar
+          </button>
+          <button type="button" id="btn-limpiar-busqueda" class="btn btn-secondary btn-clear">Limpiar</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="section-header">
+      <h2>Propiedades Seleccionadas</h2>
+      <p>Explora nuestra selección exclusiva de alojamientos premium.</p>
+    </div>
+    
     <div class="hotel-grid" id="lista-hoteles">
       <div class="empty-state">
-        <div style="font-size: 40px; margin-bottom: 15px;">⏳</div>
-        Cargando hoteles disponibles...
+        <div class="spinner"></div>
+        <p>Buscando propiedades...</p>
       </div>
     </div>
   </main>
 
-  <!-- Modal: iniciar sesión / registro -->
-  <div class="modal-overlay" id="modal-auth">
-    <div class="modal-box">
-      <button class="modal-cerrar" data-cerrar-modal="modal-auth">✕</button>
-      <h3>Accede a tu cuenta</h3>
-      <p id="auth-mensaje"></p>
+  <!-- Modals -->
+  
+  <!-- Auth Modal -->
+  <dialog id="modal-auth" class="modal">
+    <div class="modal-header">
+      <h3>Bienvenido a Hotelia</h3>
+      <button class="btn-close" data-cerrar-modal="modal-auth" aria-label="Cerrar">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p id="auth-mensaje" class="auth-message"></p>
       <div class="auth-tabs">
-        <button type="button" class="auth-tab active" data-auth-tab="login">Iniciar sesión</button>
-        <button type="button" class="auth-tab" data-auth-tab="registro">Crear cuenta</button>
+        <button type="button" class="auth-tab active" data-auth-tab="login">Iniciar Sesión</button>
+        <button type="button" class="auth-tab" data-auth-tab="registro">Crear Cuenta</button>
       </div>
-      <form id="form-login">
-        <label>Correo electrónico<input type="email" name="email" required></label>
-        <label>Contraseña<input type="password" name="password" required></label>
-        <button class="btn-primary" type="submit">Entrar</button>
+      
+      <form id="form-login" class="form-grid">
+        <div class="form-group">
+          <label>Correo Electrónico</label>
+          <input type="email" name="email" required>
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" name="password" required>
+        </div>
+        <button class="btn btn-primary w-100" type="submit">Iniciar Sesión</button>
       </form>
-      <form id="form-registro" hidden>
-        <label>Nombre completo<input type="text" name="nombre" required></label>
-        <label>Correo electrónico<input type="email" name="email" required></label>
-        <label>Contraseña<input type="password" name="password" required minlength="4"></label>
-        <button class="btn-primary" type="submit">Crear cuenta</button>
+
+      <form id="form-registro" class="form-grid" hidden>
+        <div class="form-group">
+          <label>Nombre Completo</label>
+          <input type="text" name="nombre" required>
+        </div>
+        <div class="form-group">
+          <label>Correo Electrónico</label>
+          <input type="email" name="email" required>
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" name="password" required minlength="4">
+        </div>
+        <button class="btn btn-primary w-100" type="submit">Crear Cuenta</button>
       </form>
     </div>
-  </div>
+  </dialog>
 
-  <!-- Modal: reservación -->
-  <div class="modal-overlay" id="modal-reserva">
-    <div class="modal-box">
-      <button class="modal-cerrar" data-cerrar-modal="modal-reserva">✕</button>
-      <h3>Confirma tu reservación</h3>
-      <div id="reserva-resumen"></div>
-      <form id="form-reserva">
-        <label>Fecha de entrada<input type="date" name="fechaEntrada" required></label>
-        <label>Fecha de salida<input type="date" name="fechaSalida" required></label>
-        <label id="reserva-habitacion-caja" hidden>Número de habitación<select name="habitacionId"></select></label>
-        <p id="reserva-disponibilidad" aria-live="polite"></p>
-        <label>Número de personas<input type="number" name="numeroPersonas" min="1" value="1" required></label>
-        <button class="btn-primary" type="submit">Reservar ahora</button>
+  <!-- Reservation Modal -->
+  <dialog id="modal-reserva" class="modal">
+    <div class="modal-header">
+      <h3>Confirmar Reservación</h3>
+      <button class="btn-close" data-cerrar-modal="modal-reserva" aria-label="Cerrar">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="reserva-resumen" class="reserva-summary"></div>
+      <form id="form-reserva" class="form-grid">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Check-in</label>
+            <input type="date" name="fechaEntrada" required>
+          </div>
+          <div class="form-group">
+            <label>Check-out</label>
+            <input type="date" name="fechaSalida" required>
+          </div>
+        </div>
+        
+        <div class="form-group" id="reserva-habitacion-caja" hidden>
+          <label>Seleccionar Habitación</label>
+          <select name="habitacionId"></select>
+        </div>
+        
+        <p id="reserva-disponibilidad" aria-live="polite" class="availability-status"></p>
+        
+        <div class="form-group">
+          <label>Huéspedes</label>
+          <input type="number" name="numeroPersonas" min="1" value="1" required>
+        </div>
+        <button class="btn btn-accent w-100" type="submit">Confirmar Reservación</button>
       </form>
     </div>
-  </div>
+  </dialog>
 
-  <!-- Modal: comentario -->
-  <div class="modal-overlay" id="modal-comentario">
-    <div class="modal-box">
-      <button class="modal-cerrar" data-cerrar-modal="modal-comentario">✕</button>
-      <h3>Comparte tu experiencia</h3>
-      <form id="form-comentario">
-        <label>Calificación
+  <!-- Comment Modal -->
+  <dialog id="modal-comentario" class="modal">
+    <div class="modal-header">
+      <h3>Comparte tu Experiencia</h3>
+      <button class="btn-close" data-cerrar-modal="modal-comentario" aria-label="Cerrar">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="form-comentario" class="form-grid">
+        <div class="form-group">
+          <label>Calificación</label>
           <select name="calificacion" required>
-            <option value="5">⭐⭐⭐⭐⭐ Excelente</option>
-            <option value="4">⭐⭐⭐⭐ Muy bueno</option>
-            <option value="3">⭐⭐⭐ Bueno</option>
-            <option value="2">⭐⭐ Regular</option>
-            <option value="1">⭐ Malo</option>
+            <option value="5">★★★★★ Excepcional</option>
+            <option value="4">★★★★☆ Muy Bueno</option>
+            <option value="3">★★★☆☆ Bueno</option>
+            <option value="2">★★☆☆☆ Regular</option>
+            <option value="1">★☆☆☆☆ Malo</option>
           </select>
-        </label>
-        <label>Comentario<textarea name="comentario" required></textarea></label>
-        <button class="btn-primary" type="submit">Publicar comentario</button>
+        </div>
+        <div class="form-group">
+          <label>Reseña</label>
+          <textarea name="comentario" required placeholder="Cuéntanos cómo fue tu estancia..."></textarea>
+        </div>
+        <button class="btn btn-primary w-100" type="submit">Publicar Reseña</button>
       </form>
     </div>
-  </div>
+  </dialog>
 
-  <!-- Modal: mis reservaciones -->
-  <div class="modal-overlay" id="modal-mis-reservaciones">
-    <div class="modal-box">
-      <button class="modal-cerrar" data-cerrar-modal="modal-mis-reservaciones">✕</button>
-      <h3>Mis reservaciones</h3>
-      <div id="mis-reservaciones-lista"></div>
+  <!-- My Reservations Modal -->
+  <dialog id="modal-mis-reservaciones" class="modal">
+    <div class="modal-header">
+      <h3>Mis Reservaciones</h3>
+      <button class="btn-close" data-cerrar-modal="modal-mis-reservaciones" aria-label="Cerrar">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
     </div>
-  </div>
+    <div class="modal-body">
+      <div id="mis-reservaciones-lista" class="reservations-list"></div>
+    </div>
+  </dialog>
 
-  <div id="toast" role="status"></div>
+  <!-- Global Toast -->
+  <div id="toast" role="status">
+    <span class="toast-icon"></span>
+    <span class="toast-message"></span>
+  </div>
 
   <script src="api.js"></script>
   <script src="app.js"></script>

@@ -89,7 +89,7 @@ function renderForm() {
   $('#form-title').textContent = `${record ? 'Editar' : 'Agregar'} ${entity.singular}`;
   $('#form-help').textContent = state.active === 'reservaciones' ? 'La habitación debe pertenecer al hotel seleccionado.' : 'Todos los campos son obligatorios.';
   $('#entity-form').innerHTML = entity.fields.map(([name, label, type, attrs = {}]) => fieldHtml(name, label, type, attrs, record)).join('') +
-    `<div class="buttons"><button class="primary" type="submit">${record ? 'Guardar cambios' : 'Guardar registro'}</button>${record ? '<button class="secondary" type="button" id="cancel-edit">Cancelar</button>' : ''}</div>`;
+    `<div class="buttons"><button class="btn btn-primary w-100" type="submit">${record ? 'Guardar cambios' : 'Guardar registro'}</button>${record ? '<button class="btn btn-secondary w-100" type="button" id="cancel-edit">Cancelar</button>' : ''}</div>`;
   $('#entity-form').onsubmit = saveRecord;
   if (state.active === 'habitaciones') {
     $('#entity-form').hotelId.addEventListener('change', actualizarUbicacionHotel);
@@ -149,7 +149,7 @@ function renderList() {
   }
   $('#entity-list').innerHTML = items.length ? items.map((item) => {
     const title = state.active === 'habitaciones' ? item.tipo : state.active === 'reservaciones' ? `Reservación ${item._id.slice(-6)}` : state.active === 'comentarios' ? 'Comentario' : item.nombre;
-    return `<article class="card"><div><h3>${escapeHtml(title)}</h3><p>${entity.summary(item).filter(Boolean).map(escapeHtml).join('<br>')}</p></div><div class="card-actions"><button class="secondary" data-edit="${item._id}">Editar</button><button class="danger" data-delete="${item._id}">Eliminar</button></div></article>`;
+    return `<article class="card"><div><h3>${escapeHtml(title)}</h3><p>${entity.summary(item).filter(Boolean).map(escapeHtml).join('<br>')}</p></div><div class="card-actions"><button class="btn btn-secondary btn-sm" data-edit="${item._id}">Editar</button><button class="btn btn-danger-sm" data-delete="${item._id}">Eliminar</button></div></article>`;
   }).join('') : '<p class="empty">Aún no hay registros en esta colección.</p>';
   document.querySelectorAll('[data-edit]').forEach((button) => button.onclick = () => { state.editingId = button.dataset.edit; renderForm(); window.scrollTo({ top: 180, behavior: 'smooth' }); });
   document.querySelectorAll('[data-delete]').forEach((button) => button.onclick = () => deleteRecord(button.dataset.delete));
@@ -180,8 +180,8 @@ function renderHabitacionesAgrupadas(habitaciones) {
         ${grupo.habitaciones.sort((a, b) => a.numero - b.numero).map((habitacion) => `
           <div class="card-actions" style="margin-top: 8px; justify-content: flex-start;">
             <span>Habitación #${escapeHtml(habitacion.numero)} · $${escapeHtml(habitacion.precio)} · ${habitacion.disponibilidad === true ? 'Disponible' : 'No disponible'}</span>
-            <button class="secondary" data-edit="${habitacion._id}">Editar</button>
-            <button class="danger" data-delete="${habitacion._id}">Eliminar</button>
+            <button class="btn btn-secondary btn-sm" data-edit="${habitacion._id}">Editar</button>
+            <button class="btn btn-danger-sm" data-delete="${habitacion._id}">Eliminar</button>
           </div>`).join('')}
       </div>
     </article>`).join('') : '<p class="empty">Aún no hay habitaciones registradas.</p>';
@@ -196,7 +196,11 @@ async function deleteRecord(id) {
 }
 
 function notify(message, isError = false) {
-  const toast = $('#toast'); toast.textContent = message; toast.className = `show ${isError ? 'error' : ''}`;
+  const toast = $('#toast');
+  const span = toast.querySelector('.toast-message');
+  if (span) span.textContent = message;
+  else toast.textContent = message;
+  toast.className = `show ${isError ? 'error' : ''}`;
   clearTimeout(window.toastTimer); window.toastTimer = setTimeout(() => { toast.className = ''; }, 3500);
 }
 

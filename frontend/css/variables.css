@@ -1,0 +1,51 @@
+/* css/variables.css */
+:root {
+  
+  /* Colors */
+  --bg-primary: #FAFAFA;
+  --bg-secondary: #FFFFFF;
+  --text-primary: #1A1A1A;
+  --text-secondary: #5C5C5C;
+  --text-muted: #8E8E8E;
+  
+  /* Accents */
+  --accent-gold: #C8A97E;
+  --accent-gold-hover: #B59368;
+  --accent-sage: #849B87;
+  --accent-sage-hover: #738A76;
+  --danger: #D9534F;
+  --danger-hover: #C9302C;
+
+  /* Borders & Lines */
+  --border-light: #EAEAEA;
+  --border-medium: #D1D1D1;
+  
+  /* Typography */
+  --font-heading: 'Playfair Display', serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 64px;
+  
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+  
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(26, 26, 26, 0.04);
+  --shadow-md: 0 8px 24px rgba(26, 26, 26, 0.08);
+  --shadow-lg: 0 16px 48px rgba(26, 26, 26, 0.12);
+  --shadow-gold: 0 8px 24px rgba(200, 169, 126, 0.2);
+  
+  /* Transitions */
+  --transition-fast: 0.15s ease-in-out;
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}

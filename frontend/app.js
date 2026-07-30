@@ -66,12 +66,12 @@ function actualizarUISesion() {
   if (sesion) {
     caja.innerHTML = `
       <span class="cuenta-nombre">👤 ${escapeHtml(sesion.nombre)}</span>
-      <button class="btn-admin" id="btn-mis-reservaciones" type="button">Mis reservaciones</button>
-      <button class="btn-admin" id="btn-cerrar-sesion" type="button">Salir</button>`;
+      <button class="btn btn-secondary btn-sm" id="btn-mis-reservaciones" type="button">Mis Reservaciones</button>
+      <button class="btn btn-secondary btn-sm" id="btn-cerrar-sesion" type="button">Cerrar Sesión</button>`;
     document.getElementById('btn-mis-reservaciones').onclick = abrirMisReservaciones;
     document.getElementById('btn-cerrar-sesion').onclick = cerrarSesion;
   } else {
-    caja.innerHTML = `<button class="btn-admin" id="btn-abrir-sesion" type="button">Iniciar sesión</button>`;
+    caja.innerHTML = `<button class="btn btn-primary btn-sm" id="btn-abrir-sesion" type="button">Iniciar Sesión</button>`;
     document.getElementById('btn-abrir-sesion').onclick = () => abrirAuthModal();
   }
 }
@@ -175,7 +175,7 @@ function renderizarHoteles() {
         </div>
 
         <div class="habitaciones-container">
-          <h4 style="margin-top:0; color: #62748a;">Habitaciones Disponibles:</h4>
+          <h4 style="margin-top:0; color: var(--text-secondary);">Habitaciones Disponibles:</h4>
           ${tiposDeHabitacion.length > 0 ? tiposDeHabitacion.map(grupo => {
             const habitacionBase = grupo.habitaciones[0];
             const precios = grupo.habitaciones.map((habitacion) => habitacion.precio);
@@ -188,27 +188,27 @@ function renderizarHoteles() {
                 <div class="hab-tipo">${escapeHtml(grupo.tipo)} · ${grupo.habitaciones.length} habitación(es)</div>
                 <div class="hab-precio">${textoPrecio} / noche</div>
               </div>
-              <button class="btn-reservar" data-reservar data-hotel="${hotel._id}" data-habitacion="${habitacionBase._id}">Reservar</button>
+              <button class="btn btn-accent btn-sm" data-reservar data-hotel="${hotel._id}" data-habitacion="${habitacionBase._id}">Reservar Ahora</button>
             </div>
           `;
-          }).join('') : '<div style="color: #db3a34; font-size: 14px;">No hay habitaciones disponibles.</div>'}
+          }).join('') : '<div style="color: var(--danger); font-size: 14px;">No hay habitaciones disponibles.</div>'}
         </div>
 
         <div class="comentarios-container">
           <button class="btn-toggle-comentarios" data-toggle-comentarios="${hotel._id}" type="button">
-            💬 Ver comentarios (${listaComentarios.length})
+            Leer Reseñas (${listaComentarios.length})
           </button>
           <div class="comentarios-lista" id="comentarios-${hotel._id}" hidden>
             ${listaComentarios.length ? listaComentarios.map(c => `
               <div class="comentario-item">
                 <div class="comentario-cabecera">
-                  <strong>${escapeHtml(c.clienteId?.nombre || 'Cliente')}</strong>
-                  <span>${'⭐'.repeat(c.calificacion)}</span>
+                  <strong>${escapeHtml(c.clienteId?.nombre || 'Huésped')}</strong>
+                  <span>${'★'.repeat(c.calificacion)}${'☆'.repeat(5-c.calificacion)}</span>
                 </div>
                 <p>${escapeHtml(c.comentario)}</p>
               </div>
-            `).join('') : '<p class="empty-mini">Aún no hay comentarios para este hotel.</p>'}
-            <button class="btn-comentar" data-comentar="${hotel._id}" type="button">Escribir un comentario</button>
+            `).join('') : '<p class="empty-mini">Aún no hay reseñas.</p>'}
+            <button class="btn-comentar" data-comentar="${hotel._id}" type="button">Escribir Reseña</button>
           </div>
         </div>
       </article>
@@ -334,11 +334,11 @@ async function abrirMisReservaciones() {
     const lista = document.getElementById('mis-reservaciones-lista');
     lista.innerHTML = propias.length ? propias.map((r) => `
       <div class="reserva-item">
-        <div>
+        <div class="reserva-item-info">
           <strong>${escapeHtml(r.hotelId?.nombre || 'Hotel')}</strong>
           <p>${escapeHtml(r.habitacionId?.tipo || '')} · ${formatDate(r.fechaEntrada)} — ${formatDate(r.fechaSalida)} · ${r.numeroPersonas} personas · Estado: ${escapeHtml(r.estado || 'activa')}</p>
         </div>
-        <button class="danger-mini" data-cancelar="${r._id}" type="button">Cancelar</button>
+        <button class="btn-danger-sm" data-cancelar="${r._id}" type="button">Cancelar</button>
       </div>
     `).join('') : '<p class="empty-mini">Todavía no tienes reservaciones.</p>';
 
@@ -415,12 +415,17 @@ async function enviarLogin(event) {
   const form = event.currentTarget;
   const email = form.email.value.trim().toLowerCase();
   const password = form.password.value;
+  const mensajeEl = document.getElementById('auth-mensaje');
 
   try {
-    // Login del lado del cliente comparando contra /clientes (ver nota junto a `sesion`).
     clientes = await api.get('clientes');
     const cliente = clientes.find((c) => c.email?.toLowerCase() === email && c.password === password);
-    if (!cliente) return notify('Correo o contraseña incorrectos', true);
+    if (!cliente) {
+      mensajeEl.textContent = 'Correo o contraseña incorrectos';
+      mensajeEl.style.color = 'var(--danger)';
+      mensajeEl.style.marginBottom = 'var(--space-md)';
+      return;
+    }
 
     guardarSesion(cliente);
     cerrarModal('modal-auth');
@@ -430,13 +435,16 @@ async function enviarLogin(event) {
     }
     continuarDespuesDeLogin();
   } catch (error) {
-    notify(error.message, true);
+    mensajeEl.textContent = error.message;
+    mensajeEl.style.color = 'var(--danger)';
+    mensajeEl.style.marginBottom = 'var(--space-md)';
   }
 }
 
 async function enviarRegistro(event) {
   event.preventDefault();
   const form = event.currentTarget;
+  const mensajeEl = document.getElementById('auth-mensaje');
   try {
     const cliente = await api.create('clientes', {
       nombre: form.nombre.value.trim(),
@@ -449,7 +457,9 @@ async function enviarRegistro(event) {
     notify(`¡Bienvenido, ${cliente.nombre}!`);
     continuarDespuesDeLogin();
   } catch (error) {
-    notify(error.message, true);
+    mensajeEl.textContent = error.message;
+    mensajeEl.style.color = 'var(--danger)';
+    mensajeEl.style.marginBottom = 'var(--space-md)';
   }
 }
 
@@ -470,24 +480,31 @@ function configurarModales() {
 
   document.querySelectorAll('[data-auth-tab]').forEach((tab) => tab.onclick = () => mostrarPestanaAuth(tab.dataset.authTab));
   document.querySelectorAll('[data-cerrar-modal]').forEach((boton) => boton.onclick = () => cerrarModal(boton.dataset.cerrarModal));
-  document.querySelectorAll('.modal-overlay').forEach((overlay) => {
-    overlay.addEventListener('click', (event) => { if (event.target === overlay) cerrarModal(overlay.id); });
+  document.querySelectorAll('dialog.modal').forEach((dialog) => {
+    dialog.addEventListener('click', (event) => { if (event.target === dialog) cerrarModal(dialog.id); });
   });
 }
 
-function abrirModal(id) { document.getElementById(id).classList.add('show'); }
-function cerrarModal(id) { document.getElementById(id).classList.remove('show'); }
+function abrirModal(id) { document.getElementById(id).showModal(); }
+function cerrarModal(id) { document.getElementById(id).close(); }
 
 // ---------- Utilidades ----------
 function notify(message, isError = false) {
   const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.className = `show ${isError ? 'error' : ''}`;
-  clearTimeout(window.toastTimer);
-  window.toastTimer = setTimeout(() => { toast.className = ''; }, 3500);
+  toast.querySelector('.toast-message').textContent = message;
+  
+  if (toast.parentElement !== document.body) {
+    document.body.appendChild(toast);
+  }
+  
+  void toast.offsetWidth; // Forzar reflow
+  
+  toast.className = isError ? 'error show' : 'show';
+  if (toast.timeoutId) clearTimeout(toast.timeoutId);
+  toast.timeoutId = setTimeout(() => toast.className = '', 3000);
 }
 
 const formatDate = (value) => value ? new Date(value).toLocaleDateString('es-MX', { timeZone: 'UTC' }) : '';
 
 const escapeHtml = (text) =>
-  String(text ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]);
+  String(text ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]);ce(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]);
